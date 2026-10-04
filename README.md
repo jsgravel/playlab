@@ -22,7 +22,7 @@ Open `index.html` directly, or serve this directory with any static server. No b
 
 ## Deploy on GitHub Pages
 
-1. Create a GitHub repository and upload `index.html`, `style.css`, `audio.js`, `game.js`, and `.nojekyll` to its root.
+1. Create a GitHub repository and upload `index.html`, `style.css`, `audio.js`, `game.js`, `fullscreen.js`, `manifest.webmanifest`, and `.nojekyll` to its root.
 2. In the repository, open **Settings → Pages**.
 3. Select **Deploy from a branch**, choose your branch (usually `main`) and **/ (root)**, then save.
 4. Open the published URL displayed by GitHub Pages once deployment completes.
@@ -30,5 +30,7 @@ Open `index.html` directly, or serve this directory with any static server. No b
 Relative asset links support both `username.github.io` and `username.github.io/repository-name/`. No credentials or API keys are needed. Progress is stored only in the current browser; private browsing or clearing site data may remove it.
 
 ## Controls
+
+The Full screen button sits beside the level selector. Supported browsers use native fullscreen; Exit or Escape returns to normal. Other browsers use a focus view that hides the surrounding page while keeping the game and Exit button visible. For an app-like view on iPhone, open the site in Safari and choose Share → Add to Home Screen. Open the saved icon to play without the regular browser toolbar. This does not add offline caching.
 
 Tap a tile; desktop users can also use Tab and Enter. Every valid tap commits immediately, so consecutive hops never wait for the rabbit animation. Undo reverses a hop, Restart resets the current level, Hint highlights a route toward the top. Undo or restart also cancels pending finish celebrations. The level selector opens the garden trail with completion checks and locked garden previews. Music and effects have independent buttons and start off. Woodland Radio includes eight original synthesized fantasy compositions, a song selector, next-song button, and separate music/effects volume sliders. Tracks play in order and repeat. Audio preferences are saved locally; returning players must interact before music starts. Audio pauses in background tabs. No external music files or copyrighted game recordings are used. Reduced-motion preferences disable decorative animations.
