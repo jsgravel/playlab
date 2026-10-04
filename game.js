@@ -16,7 +16,7 @@ let saved = {};
 try { saved = JSON.parse(localStorage.getItem('tilehop-v1') || '{}') || {}; } catch (_) {}
 let levelIndex = Math.min(TOTAL_LEVELS-1, Math.max(0, Math.floor(Number(saved.level) || 0)));
 let records = saved.records && typeof saved.records === 'object' ? saved.records : {};
-let level, path, busy = false, animationTimer, feedbackTimer;
+let level, path, animationTimer, feedbackTimer;
 function completed(index){return Object.hasOwn(records,index);}
 function gardenComplete(g){return Array.from({length:12},(_,i)=>completed(g*12+i)).every(Boolean);}
 function unlockedGarden(g){return g===0||Array.from({length:g},(_,i)=>gardenComplete(i)).every(Boolean);}
@@ -83,7 +83,7 @@ function symbolHTML(s,cls='symbol'){return `<span class="${cls}" style="color:${
 function boardHeight(){return level.rows*68+115;}
 function position(n){return {x:n.r<0&&level.garden===0?50:(n.c+1)*100/(level.count+1),y:boardHeight()-40-(n.r+1)*68};}
 const bunny = '<svg viewBox="0 0 50 60" aria-hidden="true"><ellipse cx="18" cy="17" rx="5" ry="15" fill="#fff9e9" stroke="#bcbfa6"/><ellipse cx="32" cy="15" rx="5" ry="15" fill="#fff9e9" stroke="#bcbfa6"/><path d="M18 7v15M32 5v15" stroke="#e4b5a2" stroke-width="3" stroke-linecap="round"/><ellipse cx="25" cy="43" rx="16" ry="15" fill="#fff9e9" stroke="#bcbfa6"/><ellipse cx="25" cy="31" rx="17" ry="14" fill="#fff9e9" stroke="#bcbfa6"/><circle cx="19" cy="30" r="1.6" fill="#3f5946"/><circle cx="31" cy="30" r="1.6" fill="#3f5946"/><path d="m23 34 2 2 2-2" fill="#cf9686"/><circle cx="15" cy="35" r="3" fill="#edc8af"/><circle cx="35" cy="35" r="3" fill="#edc8af"/><ellipse cx="16" cy="55" rx="7" ry="3" fill="#fff9e9"/><ellipse cx="34" cy="55" rx="7" ry="3" fill="#fff9e9"/></svg>';
-function load(index){if(!Number.isInteger(index)||index<0||index>=TOTAL_LEVELS||!unlockedGarden(Math.floor(index/12)))return false;clearTimeout(animationTimer);clearTimeout(feedbackTimer);levelIndex=index;level=makeLevel(index);path=[level.start];busy=false;render();persist();return true;}
+function load(index){if(!Number.isInteger(index)||index<0||index>=TOTAL_LEVELS||!unlockedGarden(Math.floor(index/12)))return false;clearTimeout(animationTimer);clearTimeout(feedbackTimer);levelIndex=index;level=makeLevel(index);path=[level.start];$('rabbit').innerHTML=bunny;$('rabbit').classList.remove('hopping');render();persist();return true;}
 function render(){
  const garden=GARDENS[level.garden];
  $('level-title').textContent=title(levelIndex);$('chapter').textContent=`${level.garden+1} / ${GARDENS.length} · ${garden.name.toUpperCase()}`;$('levels').textContent=`${String(levelIndex%12+1).padStart(2,'0')} / 12`;
@@ -100,7 +100,7 @@ function render(){
   if(tile.lock&&keyCount()<tile.lock)b.classList.add('locked');
   b.onclick=()=>hop(tile);board.append(b);
  }
- const rabbit=document.createElement('div');rabbit.id='rabbit';rabbit.className='rabbit';rabbit.innerHTML=bunny;const p=position(n);rabbit.style.left=p.x+'%';rabbit.style.top=(p.y-19)+'px';board.append(rabbit);
+ const rabbit=$('rabbit'),p=position(n);rabbit.style.left=p.x+'%';rabbit.style.top=(p.y-19)+'px';
  const finished=n.r===level.rows-1;
  $('progress').style.width=((path.length-1)/level.rows*100)+'%';$('match').innerHTML=finished?'✦':symbolHTML(n.next);$('stars').textContent=path.filter(t=>t.star).length;$('undo').disabled=path.length===1;
  const stuck=choices(n).length===0&&n.r<level.rows-1;
@@ -108,12 +108,15 @@ function render(){
  $('subprompt').textContent=finished?'Enjoy the view. Your climb is complete.':stuck?'Undo a hop and try another path.':n.spring?'Spring hop! Match two rows above.':level.garden>=2?`⚿ ${keyCount()} ${keyCount()===1?'key':'keys'} collected · ▣ gates need keys.`:level.garden===1?'Stay nearby: at most one column sideways.':'Small symbol = your next match. ✦ = bonus star.';
 }
 function hop(tile){
- if(busy)return;
  const n=current();if(tile.r!==n.r+(n.spring?2:1)||level.garden>0&&Math.abs(tile.c-n.c)>1)return;
  if(tile.lock&&keyCount()<tile.lock){$('prompt').textContent=`This gate needs ${tile.lock} ${tile.lock===1?'key':'keys'}`;$('subprompt').textContent='Undo and take a path through a key tile ⚿.';$('announcement').textContent=$('prompt').textContent;return;}
- if(tile.entry!==n.next){const b=document.querySelector(`[data-id="${tile.id}"]`);b.classList.remove('wrong');void b.offsetWidth;b.classList.add('wrong');$('prompt').textContent='Look for the same symbol';clearTimeout(feedbackTimer);feedbackTimer=setTimeout(()=>{if(!busy)render();},1100);tone(160,.08);return;}
- busy=true;clearTimeout(feedbackTimer);const rabbit=$('rabbit'),p=position(tile);rabbit.classList.add('hopping');rabbit.style.left=p.x+'%';rabbit.style.top=(p.y-19)+'px';tone(420+tile.r*65,.12);
- animationTimer=setTimeout(()=>{path.push(tile);busy=false;render();$('announcement').textContent=`Row ${tile.r+1} of ${level.rows}. ${tile.key?'Key collected. ':''}${tile.star?'Star collected.':''}`;if(tile.star||tile.key)celebrate();if(tile.r===level.rows-1)win();},400);
+ if(tile.entry!==n.next){const b=document.querySelector(`[data-id="${tile.id}"]`);b.classList.remove('wrong');void b.offsetWidth;b.classList.add('wrong');$('prompt').textContent='Look for the same symbol';clearTimeout(feedbackTimer);feedbackTimer=setTimeout(render,1100);tone(160,.08);return;}
+ clearTimeout(feedbackTimer);clearTimeout(animationTimer);
+ // Commit the move immediately. Animation is decoration, never an input lock.
+ path.push(tile);render();const rabbit=$('rabbit');rabbit.classList.remove('hopping');void rabbit.offsetWidth;rabbit.classList.add('hopping');tone(420+tile.r*65,.12);
+ $('announcement').textContent=`Row ${tile.r+1} of ${level.rows}. ${tile.key?'Key collected. ':''}${tile.star?'Star collected.':''}`;
+ if(tile.star||tile.key)celebrate();
+ if(tile.r===level.rows-1)animationTimer=setTimeout(win,180);
 }
 function celebrate(){for(let i=0;i<8;i++){const s=document.createElement('span');s.className='confetti';s.textContent='✦';s.style.left=(25+Math.random()*50)+'%';s.style.top=(60+Math.random()*150)+'px';$('playfield').append(s);setTimeout(()=>s.remove(),1100);}}
 function persist(){try{localStorage.setItem('tilehop-v1',JSON.stringify({level:levelIndex,records}));}catch(_){}}
@@ -143,11 +146,11 @@ function showLevels(selected=level.garden){
  document.querySelectorAll('[data-level]').forEach(b=>b.onclick=()=>{close();load(Number(b.dataset.level));});if($('finale'))$('finale').onclick=showFinale;$('close').onclick=close;
 }
 function tone(freq,duration){window.TileHopAudio?.effect(freq,duration);}
-$('undo').onclick=()=>{if(busy||path.length===1)return;path.pop();render();tone(300,.08);};$('restart').onclick=()=>load(levelIndex);
-$('hint').onclick=()=>{if(busy)return;const route=bestRoute(current());if(!route){$('prompt').textContent='Try undoing your last hop';$('announcement').textContent='This path cannot reach the top. Undo your last hop.';return;}const next=route.route[0];if(next){document.querySelector(`[data-id="${next.id}"]`).classList.add('hinted');$('prompt').textContent='This tile leads toward home';}};
+$('undo').onclick=()=>{if(path.length===1)return;clearTimeout(animationTimer);clearTimeout(feedbackTimer);path.pop();render();tone(300,.08);};$('restart').onclick=()=>load(levelIndex);
+$('hint').onclick=()=>{const route=bestRoute(current());if(!route){$('prompt').textContent='Try undoing your last hop';$('announcement').textContent='This path cannot reach the top. Undo your last hop.';return;}const next=route.route[0];if(next){document.querySelector(`[data-id="${next.id}"]`).classList.add('hinted');$('prompt').textContent='This tile leads toward home';}};
 $('levels').onclick=()=>showLevels();
 $('help').onclick=()=>{modal('<div class="big-icon">☁</div><div class="eyebrow">WELCOME TO TILE HOP</div><h2>A hop, a match, a smile.</h2><p><strong>1.</strong> Look at the big symbol on your current tile.<br><strong>2.</strong> Tap the same symbol in the row just above.<br><strong>3.</strong> After landing, follow the small symbol for your next match.</p><p>Plan ahead using the small symbols on other tiles. Reach the top to complete your climb. Stars are optional little discoveries on different routes; you don’t need to collect them all. Wrong taps are harmless; undo is always free. No timer, no rush.</p><button class="primary" id="close">Let’s hop →</button>');$('close').onclick=close;};
 if(!unlockedGarden(Math.floor(levelIndex/12)))levelIndex=firstUnfinished(0);
 load(levelIndex);
 // Pure generation and solver helpers are exposed for lightweight offline checks.
-window.TileHop={makeLevel,getState:()=>({levelIndex,level,path:[...path],busy,records:{...records}}),bestRoute,load,completed,gardenComplete,unlockedGarden,showLevels};
+window.TileHop={makeLevel,getState:()=>({levelIndex,level,path:[...path],records:{...records}}),bestRoute,load,completed,gardenComplete,unlockedGarden,showLevels};

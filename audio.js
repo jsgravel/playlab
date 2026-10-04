@@ -5,30 +5,35 @@
   {name:'A Path Through Ferns',bpm:76,root:60,scale:[0,2,4,7,9],chords:[[0,4,7],[9,12,16],[5,9,12],[7,11,14]],melody:[0,2,3,2,1,0,1,2,4,3,2,1,2,0,-1,1,2,3,4,3,2,1,0,1,3,2,1,0,1,0,-1,-1]},
   {name:'Lanterns by the Lake',bpm:68,root:62,scale:[0,2,3,7,9],chords:[[0,3,7],[5,9,12],[10,14,17],[0,3,7]],melody:[2,-1,3,4,3,2,1,0,1,2,3,-1,2,1,0,-1,0,1,2,4,3,-1,2,1,3,2,1,0,1,2,0,-1]},
   {name:'The Sleepy Windmill',bpm:82,root:65,scale:[0,2,4,7,9],chords:[[0,4,7],[7,11,14],[9,12,16],[5,9,12]],melody:[0,1,2,-1,3,2,1,2,4,3,2,-1,1,2,0,-1,2,3,4,2,3,2,1,0,1,3,2,1,2,0,-1,-1]},
-  {name:'A Home Above the Clouds',bpm:64,root:60,scale:[0,2,5,7,9],chords:[[0,5,7],[5,9,12],[9,12,16],[7,12,14]],melody:[3,-1,2,1,0,-1,1,2,4,3,-1,2,1,0,-1,-1,0,2,3,4,3,2,-1,1,2,3,2,1,0,-1,0,-1]}
+  {name:'A Home Above the Clouds',bpm:64,root:60,scale:[0,2,5,7,9],chords:[[0,5,7],[5,9,12],[9,12,16],[7,12,14]],melody:[3,-1,2,1,0,-1,1,2,4,3,-1,2,1,0,-1,-1,0,2,3,4,3,2,-1,1,2,3,2,1,0,-1,0,-1]},
+  {name:'Dewdrop Bells',bpm:72,root:67,lead:'bell',scale:[0,2,4,7,9],chords:[[0,4,7],[5,9,12],[2,5,9],[7,11,14]],melody:[4,-1,2,3,1,-1,0,2,3,4,-1,2,1,0,-1,1,2,-1,4,3,2,1,-1,0,3,2,4,1,0,-1,0,-1]},
+  {name:'Willow Harp',bpm:70,root:62,lead:'harp',scale:[0,2,5,7,9],chords:[[0,5,7],[9,12,16],[5,9,12],[7,12,14]],melody:[0,2,-1,3,4,2,1,-1,2,3,1,0,2,-1,1,0,3,4,2,-1,1,0,1,2,4,3,2,1,0,1,-1,-1]},
+  {name:'Firefly Waltz',bpm:78,root:64,lead:'bell',scale:[0,2,3,7,10],chords:[[0,3,7],[8,12,15],[5,8,12],[10,14,17]],melody:[2,3,-1,4,2,1,0,-1,1,2,3,-1,4,3,2,1,0,-1,2,3,4,2,1,-1,3,2,1,0,1,0,-1,-1]},
+  {name:'Morning at the Sanctuary',bpm:66,root:65,lead:'flute',scale:[0,2,4,7,9],chords:[[0,4,7],[2,5,9],[5,9,12],[0,4,7]],melody:[0,-1,1,2,3,-1,4,3,2,1,-1,0,2,1,0,-1,2,3,-1,4,3,2,1,-1,0,1,2,3,1,0,-1,-1]}
  ];
  let prefs={};try{prefs=JSON.parse(localStorage.getItem('tilehop-audio-v1')||'{}')||{};}catch(_){}
- let music=!!prefs.music,effects=!!prefs.effects,track=Number.isInteger(prefs.track)?Math.max(0,Math.min(3,prefs.track)):0;
+ let music=!!prefs.music,effects=!!prefs.effects,track=Number.isInteger(prefs.track)?Math.max(0,Math.min(tracks.length-1,prefs.track)):0;
  let volume=Number.isFinite(prefs.volume)?Math.max(0,Math.min(1,prefs.volume)):.45;
- let ctx,musicBus,effectsBus,interval,nextTime=0,step=0,playing=false,unlocked=false,generation=0;
+ let effectsVolume=Number.isFinite(prefs.effectsVolume)?Math.max(0,Math.min(1,prefs.effectsVolume)):.65;
+ let ctx,musicBus,effectsBus,interval,nextTime=0,step=0,playing=false,unlocked=false,generation=0,effectsGeneration=0;
  const voices=new Set(),$=id=>document.getElementById(id),freq=n=>440*2**((n-69)/12);
- function save(){try{localStorage.setItem('tilehop-audio-v1',JSON.stringify({music,effects,track,volume}));}catch(_){}}
+ function save(){try{localStorage.setItem('tilehop-audio-v1',JSON.stringify({music,effects,track,volume,effectsVolume}));}catch(_){}}
  function ui(){
   $('music').innerHTML='♫ <span>Music '+(music?'on':'off')+'</span>';$('music').setAttribute('aria-pressed',String(music));$('music').setAttribute('aria-label',music?'Disable music':'Enable music');
   $('sound').innerHTML='✧ <span>Effects '+(effects?'on':'off')+'</span>';$('sound').setAttribute('aria-pressed',String(effects));$('sound').setAttribute('aria-label',effects?'Disable effects':'Enable effects');
-  $('song').value=String(track);$('music-volume').value=String(Math.round(volume*100));$('now-playing').textContent=playing?tracks[track].name:music?'Tap to start your soundtrack':'Four little fantasy melodies';
+  $('song').value=String(track);$('music-volume').value=String(Math.round(volume*100));$('effects-volume').value=String(Math.round(effectsVolume*100));$('music-volume-value').textContent=Math.round(volume*100)+'%';$('effects-volume-value').textContent=Math.round(effectsVolume*100)+'%';$('now-playing').textContent=playing?tracks[track].name:music?'Tap to start your soundtrack':'Eight little fantasy melodies';
  }
  async function unlock(){
   try{
-   if(!ctx){ctx=new (window.AudioContext||window.webkitAudioContext)();musicBus=ctx.createGain();effectsBus=ctx.createGain();musicBus.gain.value=0;effectsBus.gain.value=effects?1:0;musicBus.connect(ctx.destination);effectsBus.connect(ctx.destination);}
-   await ctx.resume();unlocked=ctx.state==='running';$('audio-status').textContent=unlocked?'':'Tap Music again to resume audio.';return unlocked;
+   if(!ctx){ctx=new (window.AudioContext||window.webkitAudioContext)();musicBus=ctx.createGain();effectsBus=ctx.createGain();musicBus.gain.value=0;effectsBus.gain.value=effects?effectsVolume:0;musicBus.connect(ctx.destination);effectsBus.connect(ctx.destination);}
+   if(ctx.state!=='running')await ctx.resume();unlocked=ctx.state==='running';$('audio-status').textContent=unlocked?'':'Tap an audio button again to resume audio.';return unlocked;
   }catch(_){$('audio-status').textContent='Audio is unavailable in this browser. You can still enjoy the game.';return false;}
  }
  function ramp(bus,value){if(!ctx||!bus)return;bus.gain.cancelScheduledValues(ctx.currentTime);bus.gain.setTargetAtTime(value,ctx.currentTime,.06);}
  function voice(note,time,duration,kind,level,bus=musicBus){
   const osc=ctx.createOscillator(),gain=ctx.createGain();osc.type=kind==='harp'?'triangle':'sine';osc.frequency.value=freq(note);
   // Gentle attacks avoid clicks; a sine flute and rounded triangle harp keep the mix light.
-  gain.gain.setValueAtTime(.0001,time);gain.gain.exponentialRampToValueAtTime(level,time+(kind==='harp'?.018:.12));gain.gain.exponentialRampToValueAtTime(.0001,time+duration);
+  gain.gain.setValueAtTime(.0001,time);gain.gain.exponentialRampToValueAtTime(level,time+(kind==='harp'||kind==='bell'?.018:.12));gain.gain.exponentialRampToValueAtTime(.0001,time+duration);
   osc.connect(gain);gain.connect(bus);osc.start(time);osc.stop(time+duration+.03);
   const v={osc,gain,bus};voices.add(v);osc.onended=()=>{osc.disconnect();gain.disconnect();voices.delete(v);};
  }
@@ -44,20 +49,33 @@
    const t=tracks[track],beat=60/t.bpm,bar=Math.floor(step/8),chord=t.chords[bar%4];
    if(step%8===0){for(const n of chord)voice(t.root+n-12,nextTime,beat*4.7,'pad',.025);voice(t.root+chord[0]-24,nextTime,beat*3.8,'pad',.04);}
    const harp=chord[[0,1,2,1,0,2,1,2][step%8]];voice(t.root+harp,nextTime,beat*1.6,'harp',.045);
-   if(step%2===0){const phrase=Math.floor(step/2)%32,m=t.melody[phrase];if(m>=0)voice(t.root+12+t.scale[m],nextTime+.018,beat*1.75,'flute',.065);}
+   if(step%2===0){const phrase=Math.floor(step/2)%32,m=t.melody[phrase];if(m>=0)voice(t.root+12+t.scale[m],nextTime+.018,beat*(t.lead==='bell'?2.4:1.75),t.lead||'flute',.065);}
    nextTime+=beat/2;step++;
    // Two 16-bar passes per song, then continue through the playlist without silence.
    if(step===256){step=0;track=(track+1)%tracks.length;save();ui();}
   }
  }
  async function start(){stop();const token=generation;if(!music||document.hidden||!await unlock()||token!==generation||!music||document.hidden)return;playing=true;step=0;nextTime=ctx.currentTime+.1;ramp(musicBus,volume);schedule();interval=setInterval(schedule,100);ui();}
- async function effect(f,d){if(!effects||document.hidden||!await unlock()||!effects)return;voice(69+12*Math.log2(f/440),ctx.currentTime+.005,Math.max(.15,d),'harp',.07,effectsBus);}
+ async function effect(f,d){
+  const token=effectsGeneration;
+  if(!effects||effectsVolume===0||document.hidden)return;
+  if((!ctx||ctx.state!=='running')&&!await unlock())return;
+  if(!effects||token!==effectsGeneration||document.hidden)return;
+  // Synchronize the actual bus, including when enabling effects after music created it muted.
+  ramp(effectsBus,effectsVolume);
+  voice(69+12*Math.log2(f/440),ctx.currentTime+.005,Math.max(.15,d),'harp',.1,effectsBus);
+ }
+ function muteEffects(){
+  if(!ctx)return;ramp(effectsBus,0);
+  for(const v of voices)if(v.bus===effectsBus){try{v.gain.gain.cancelScheduledValues(ctx.currentTime);v.gain.gain.setTargetAtTime(.0001,ctx.currentTime,.008);v.osc.stop(ctx.currentTime+.03);}catch(_){}}
+ }
  $('song').innerHTML=tracks.map((t,i)=>`<option value="${i}">${t.name}</option>`).join('');
  $('music').onclick=()=>{music=!music;save();ui();if(music)start();else stop();};
- $('sound').onclick=async()=>{effects=!effects;save();ui();if(effects){await unlock();ramp(effectsBus,1);effect(550,.15);}else ramp(effectsBus,0);};
+ $('sound').onclick=()=>{effects=!effects;effectsGeneration++;save();ui();if(effects)effect(550,.15);else muteEffects();};
  $('song').onchange=()=>{track=Number($('song').value);save();if(music)start();else ui();};
  $('next-song').onclick=()=>{track=(track+1)%tracks.length;save();if(music)start();else ui();};
- $('music-volume').oninput=()=>{volume=Number($('music-volume').value)/100;save();if(playing)ramp(musicBus,volume);};
+ $('music-volume').oninput=()=>{volume=Number($('music-volume').value)/100;save();$('music-volume-value').textContent=Math.round(volume*100)+'%';if(playing)ramp(musicBus,volume);};
+ $('effects-volume').oninput=()=>{effectsVolume=Number($('effects-volume').value)/100;save();$('effects-volume-value').textContent=Math.round(effectsVolume*100)+'%';if(effects)ramp(effectsBus,effectsVolume);};
  document.addEventListener('pointerdown',()=>{if(music&&!unlocked)start();},{once:true});
  document.addEventListener('keydown',()=>{if(music&&!unlocked)start();},{once:true});
  document.addEventListener('visibilitychange',()=>{if(document.hidden){stop();if(ctx)ctx.suspend();}else if(music&&unlocked)start();});

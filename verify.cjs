@@ -21,9 +21,9 @@ function finish(index){
   const current=api.getState().path.at(-1);assert.equal(tile.r,current.r+(current.spring?2:1));
   if(state.level.garden>0)assert.ok(Math.abs(tile.c-current.c)<=1,'Later gardens require nearby hops');
   assert.ok(!tile.lock||keys>=tile.lock,'A route must collect keys before gates');
-  context.hop(tile);assert.equal(api.getState().busy,true);app.flush();assert.equal(api.getState().path.at(-1).id,tile.id);if(tile.key)keys++;
+  context.hop(tile);assert.equal(api.getState().path.at(-1).id,tile.id,'Moves commit immediately without waiting for animation');if(tile.key)keys++;
  }
- assert.equal(api.getState().path.at(-1).r,state.level.rows-1);assert.ok(Object.hasOwn(app.storage().records,index));
+ assert.equal(api.getState().path.at(-1).r,state.level.rows-1);app.flush();assert.ok(Object.hasOwn(app.storage().records,index));
  const content=document.getElementById('dialog-content').innerHTML;assert.ok(!/\d+ of \d+ stars/.test(content));document.getElementById('dialog').close();return content;
 }
 finish(11);assert.equal(api.unlockedGarden(1),false,'Completing level 12 alone does not unlock garden 2');
@@ -46,7 +46,11 @@ vm.runInContext('path = path.filter(n => !n.key)',context);
 const before=api.getState().path.length;context.hop(route.at(-1));app.flush();assert.equal(api.getState().path.length,before);assert.match(document.getElementById('prompt').textContent,/needs 1 key/);
 api.load(48);const far=api.getState().level.nodes.find(t=>t.r===0&&t.c===3);context.hop(far);assert.equal(api.getState().path.length,1,'Out-of-reach tiles cannot be hopped to');
 const oldRecords=Object.fromEntries(Array.from({length:12},(_,i)=>[i,0]));
+const interrupted=boot();const fastRoute=interrupted.api.bestRoute(interrupted.api.getState().level.start).route;
+for(const tile of fastRoute)interrupted.context.hop(tile);
+interrupted.document.getElementById('undo').onclick();interrupted.flush();assert.equal(interrupted.api.completed(0),false,'Undo cancels a pending finish celebration');
+interrupted.context.hop(fastRoute.at(-1));interrupted.api.load(1);interrupted.flush();assert.equal(interrupted.api.completed(0),false,'Changing levels cancels a pending finish');
 const migrated=boot({level:11,records:oldRecords});assert.equal(migrated.api.unlockedGarden(1),true);assert.equal(migrated.api.unlockedGarden(2),false);
 assert.equal(boot(app.storage()).api.gardenComplete(4),true);
 assert.equal(boot({level:59,records:{}}).api.getState().levelIndex,0,'A stale save cannot enter locked gardens');
-console.log('PASS: all 60 levels solvable; garden locks, out-of-order completion, keys, springs, reach, undo, migration, saved progress, garden celebrations, and finale.');
+console.log('PASS: all 60 levels with rapid consecutive taps; cancelled finishes, garden locks, keys, springs, undo, saved progress, and celebrations.');
