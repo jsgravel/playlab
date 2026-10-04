@@ -14,7 +14,9 @@ Each garden has 12 climbs. Finish every climb in a garden to unlock the next; un
 
 Rules appear above each puzzle. Undo reverses key collection and spring position. Hints evaluate reach, keys, and spring hops to find a complete route. Stars remain optional discoveries, not a completion requirement.
 
-Run `node verify.cjs` and `node verify-audio.cjs` for dependency-free checks of the puzzles, progression, saved games, and audio lifecycle.
+The first time you enter a garden, a short animated rabbit example introduces its rules. Watch, replay, or try the example without changing your puzzle progress. Acknowledgements are saved, and How to play lets you review the current garden's example. Starlight has separate examples for the sun symbol and two-key gates. Mechanic sound cues distinguish collecting keys, opening/blocked gates, preparing/using springs, stars, and milestone celebrations; all use the effects mute and volume controls.
+
+Run `node verify.cjs`, `node verify-audio.cjs`, `node verify-tutorials.cjs`, and `node verify-fullscreen.cjs` for dependency-free checks of puzzles, progression, tutorials, audio, and fullscreen.
 
 ## Play locally
 
@@ -22,7 +24,7 @@ Open `index.html` directly, or serve this directory with any static server. No b
 
 ## Deploy on GitHub Pages
 
-1. Create a GitHub repository and upload `index.html`, `style.css`, `audio.js`, `game.js`, `fullscreen.js`, `manifest.webmanifest`, and `.nojekyll` to its root.
+1. Create a GitHub repository and upload `index.html`, `style.css`, `audio.js`, `tutorials.js`, `game.js`, `fullscreen.js`, `manifest.webmanifest`, and `.nojekyll` to its root.
 2. In the repository, open **Settings → Pages**.
 3. Select **Deploy from a branch**, choose your branch (usually `main`) and **/ (root)**, then save.
 4. Open the published URL displayed by GitHub Pages once deployment completes.

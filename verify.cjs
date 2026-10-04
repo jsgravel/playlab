@@ -1,12 +1,12 @@
 // Dependency-free checks of real game state, progression, and generated puzzle rules.
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
-function boot(saved={}){
- const elements=new Map(),timers=new Map();let nextTimer=0,storage=JSON.stringify(saved);
+function boot(saved={},lessons){
+ const elements=new Map(),timers=new Map(),soundEvents=[];let nextTimer=0,storage=JSON.stringify(saved);
  function element(){let html='';return {style:{},dataset:{},classList:{add(){},remove(){}},children:[],get innerHTML(){return html;},set innerHTML(v){html=v;this.children=[];},textContent:'',append(x){this.children.push(x);},setAttribute(k,v){this[k]=v;},showModal(){this.open=true;},close(){this.open=false;},remove(){}};}
  const document={getElementById(id){if(!elements.has(id))elements.set(id,element());return elements.get(id);},createElement:element,querySelector(){return element();},querySelectorAll(){return [];}};
- const context={document,window:{},localStorage:{getItem:()=>storage,setItem:(k,v)=>{storage=v;}},setTimeout(fn){timers.set(++nextTimer,fn);return nextTimer;},clearTimeout(id){timers.delete(id);},console,Math};
+ const context={document,window:{TileHopLessons:lessons,TileHopAudio:{cue:n=>soundEvents.push(n),effect(){}}},localStorage:{getItem:()=>storage,setItem:(k,v)=>{storage=v;}},setTimeout(fn){timers.set(++nextTimer,fn);return nextTimer;},clearTimeout(id){timers.delete(id);},console,Math};
  vm.createContext(context);vm.runInContext(fs.readFileSync('game.js','utf8'),context);
- return {api:context.window.TileHop,context,document,storage:()=>JSON.parse(storage),flush(){while(timers.size){const [id,fn]=timers.entries().next().value;timers.delete(id);fn();}}};
+ return {api:context.window.TileHop,context,document,soundEvents,storage:()=>JSON.parse(storage),flush(){while(timers.size){const [id,fn]=timers.entries().next().value;timers.delete(id);fn();}}};
 }
 const app=boot(),{api,context,document}=app;
 assert.equal(api.load(12),false,'The second garden starts locked');
@@ -51,6 +51,10 @@ for(const tile of fastRoute)interrupted.context.hop(tile);
 interrupted.document.getElementById('undo').onclick();interrupted.flush();assert.equal(interrupted.api.completed(0),false,'Undo cancels a pending finish celebration');
 interrupted.context.hop(fastRoute.at(-1));interrupted.api.load(1);interrupted.flush();assert.equal(interrupted.api.completed(0),false,'Changing levels cancels a pending finish');
 const migrated=boot({level:11,records:oldRecords});assert.equal(migrated.api.unlockedGarden(1),true);assert.equal(migrated.api.unlockedGarden(2),false);
+const shown=[];const taught=boot({level:12,records:oldRecords},{show(g,options){shown.push(g);options.onDone();}});
+assert.deepEqual(shown,[1]);taught.api.load(13);assert.deepEqual(shown,[1],'Acknowledged garden lesson does not repeat each level');assert.equal(taught.storage().tutorialsSeen[1],true);
+const reviewing=boot(taught.storage(),{show(g,options){shown.push(g);options.onDone();}});assert.deepEqual(shown,[1],'Tutorial acknowledgement survives a reload');vm.runInContext('showLesson()',reviewing.context);assert.deepEqual(shown,[1,1],'Examples can be reviewed explicitly');
 assert.equal(boot(app.storage()).api.gardenComplete(4),true);
 assert.equal(boot({level:59,records:{}}).api.getState().levelIndex,0,'A stale save cannot enter locked gardens');
+for(const cue of ['key','unlock','locked','springReady','spring','sun','nearby','garden','finale'])assert.ok(app.soundEvents.includes(cue),`Game events trigger the ${cue} sound`);
 console.log('PASS: all 60 levels with rapid consecutive taps; cancelled finishes, garden locks, keys, springs, undo, saved progress, and celebrations.');

@@ -5,7 +5,7 @@
   <meta name="theme-color" content="#183f36"><meta name="description" content="A gentle matching adventure. Follow the tiles, collect little stars, and hop home.">
   <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Tile Hop"><link rel="manifest" href="manifest.webmanifest">
   <title>Tile Hop · A little climb</title>
-  <link rel="stylesheet" href="style.css"><script src="audio.js" defer></script><script src="game.js" defer></script><script src="fullscreen.js" defer></script>
+  <link rel="stylesheet" href="style.css"><script src="audio.js" defer></script><script src="tutorials.js" defer></script><script src="game.js" defer></script><script src="fullscreen.js" defer></script>
 </head>
 <body>
 <main class="app">
@@ -24,5 +24,6 @@
   <footer><span>No rush. Just a little adventure.</span><button id="help">How to play ↗</button></footer>
 </main>
 <dialog id="dialog"><div id="dialog-content"></div></dialog>
+<dialog id="lesson-dialog" aria-label="Learn a new garden mechanic"><div id="lesson-content"></div></dialog>
 <div id="announcement" class="sr-only" aria-live="polite"></div>
 </body></html>

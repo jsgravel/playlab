@@ -65,6 +65,25 @@
   ramp(effectsBus,effectsVolume);
   voice(69+12*Math.log2(f/440),ctx.currentTime+.005,Math.max(.15,d),'harp',.1,effectsBus);
  }
+ const cues={
+  hop:[[72,0,.16,'harp']],nearby:[[67,0,.15,'flute'],[74,.055,.16,'harp']],
+  key:[[84,0,.18,'bell'],[91,.08,.26,'bell'],[96,.16,.3,'bell']],
+  unlock:[[48,0,.16,'harp'],[60,.07,.18,'harp'],[76,.13,.28,'bell']],
+  locked:[[43,0,.15,'harp'],[42,.08,.17,'harp']],blocked:[[55,0,.16,'harp']],
+  springReady:[[64,0,.15,'harp'],[71,.06,.17,'harp']],
+  spring:[[60,0,.16,'harp'],[67,.035,.17,'harp'],[76,.07,.2,'flute'],[84,.12,.24,'bell']],
+  sun:[[79,0,.2,'bell'],[86,.07,.24,'bell']],star:[[88,0,.18,'bell'],[95,.06,.22,'bell']],
+  complete:[[72,0,.22,'harp'],[76,.1,.25,'bell'],[79,.2,.35,'bell']],
+  garden:[[60,0,.28,'harp'],[67,.1,.3,'harp'],[72,.2,.35,'bell'],[76,.3,.35,'bell'],[84,.45,.5,'bell']],
+  finale:[[60,0,.35,'harp'],[64,0,.35,'harp'],[67,.12,.35,'harp'],[72,.24,.35,'bell'],[76,.36,.4,'bell'],[79,.48,.4,'bell'],[84,.65,.65,'bell']]
+ };
+ async function cue(name){
+  const notes=cues[name],token=effectsGeneration;if(!notes||!effects||effectsVolume===0||document.hidden)return;
+  if((!ctx||ctx.state!=='running')&&!await unlock())return;
+  if(!effects||token!==effectsGeneration||document.hidden)return;
+  ramp(effectsBus,effectsVolume);
+  for(const [pitch,delay,duration,kind] of notes)voice(pitch,ctx.currentTime+.005+delay,duration,kind,.07,effectsBus);
+ }
  function muteEffects(){
   if(!ctx)return;ramp(effectsBus,0);
   for(const v of voices)if(v.bus===effectsBus){try{v.gain.gain.cancelScheduledValues(ctx.currentTime);v.gain.gain.setTargetAtTime(.0001,ctx.currentTime,.008);v.osc.stop(ctx.currentTime+.03);}catch(_){}}
@@ -80,5 +99,5 @@
  document.addEventListener('keydown',()=>{if(music&&!unlocked)start();},{once:true});
  document.addEventListener('visibilitychange',()=>{if(document.hidden){stop();if(ctx)ctx.suspend();}else if(music&&unlocked)start();});
  window.addEventListener('pagehide',()=>{stop();if(ctx)ctx.suspend();});
- ui();window.TileHopAudio={effect,tracks};
+ ui();window.TileHopAudio={effect,cue,tracks};
 })();

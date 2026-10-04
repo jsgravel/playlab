@@ -16,6 +16,7 @@ let saved = {};
 try { saved = JSON.parse(localStorage.getItem('tilehop-v1') || '{}') || {}; } catch (_) {}
 let levelIndex = Math.min(TOTAL_LEVELS-1, Math.max(0, Math.floor(Number(saved.level) || 0)));
 let records = saved.records && typeof saved.records === 'object' ? saved.records : {};
+let tutorialsSeen=saved.tutorialsSeen&&typeof saved.tutorialsSeen==='object'?saved.tutorialsSeen:{};
 let level, path, animationTimer, feedbackTimer;
 function completed(index){return Object.hasOwn(records,index);}
 function gardenComplete(g){return Array.from({length:12},(_,i)=>completed(g*12+i)).every(Boolean);}
@@ -83,7 +84,8 @@ function symbolHTML(s,cls='symbol'){return `<span class="${cls}" style="color:${
 function boardHeight(){return level.rows*68+115;}
 function position(n){return {x:n.r<0&&level.garden===0?50:(n.c+1)*100/(level.count+1),y:boardHeight()-40-(n.r+1)*68};}
 const bunny = '<svg viewBox="0 0 50 60" aria-hidden="true"><ellipse cx="18" cy="17" rx="5" ry="15" fill="#fff9e9" stroke="#bcbfa6"/><ellipse cx="32" cy="15" rx="5" ry="15" fill="#fff9e9" stroke="#bcbfa6"/><path d="M18 7v15M32 5v15" stroke="#e4b5a2" stroke-width="3" stroke-linecap="round"/><ellipse cx="25" cy="43" rx="16" ry="15" fill="#fff9e9" stroke="#bcbfa6"/><ellipse cx="25" cy="31" rx="17" ry="14" fill="#fff9e9" stroke="#bcbfa6"/><circle cx="19" cy="30" r="1.6" fill="#3f5946"/><circle cx="31" cy="30" r="1.6" fill="#3f5946"/><path d="m23 34 2 2 2-2" fill="#cf9686"/><circle cx="15" cy="35" r="3" fill="#edc8af"/><circle cx="35" cy="35" r="3" fill="#edc8af"/><ellipse cx="16" cy="55" rx="7" ry="3" fill="#fff9e9"/><ellipse cx="34" cy="55" rx="7" ry="3" fill="#fff9e9"/></svg>';
-function load(index){if(!Number.isInteger(index)||index<0||index>=TOTAL_LEVELS||!unlockedGarden(Math.floor(index/12)))return false;clearTimeout(animationTimer);clearTimeout(feedbackTimer);levelIndex=index;level=makeLevel(index);path=[level.start];$('rabbit').innerHTML=bunny;$('rabbit').classList.remove('hopping');render();persist();return true;}
+function load(index){if(!Number.isInteger(index)||index<0||index>=TOTAL_LEVELS||!unlockedGarden(Math.floor(index/12)))return false;clearTimeout(animationTimer);clearTimeout(feedbackTimer);levelIndex=index;level=makeLevel(index);path=[level.start];$('rabbit').innerHTML=bunny;$('rabbit').classList.remove('hopping');render();persist();if(!tutorialsSeen[level.garden])showLesson();return true;}
+function showLesson(){const g=level.garden;window.TileHopLessons?.show(g,{bunny,onSound:cue,onDone:()=>{tutorialsSeen[g]=true;persist();}});}
 function render(){
  const garden=GARDENS[level.garden];
  $('level-title').textContent=title(levelIndex);$('chapter').textContent=`${level.garden+1} / ${GARDENS.length} · ${garden.name.toUpperCase()}`;$('levels').textContent=`${String(levelIndex%12+1).padStart(2,'0')} / 12`;
@@ -109,33 +111,38 @@ function render(){
 }
 function hop(tile){
  const n=current();if(tile.r!==n.r+(n.spring?2:1)||level.garden>0&&Math.abs(tile.c-n.c)>1)return;
- if(tile.lock&&keyCount()<tile.lock){$('prompt').textContent=`This gate needs ${tile.lock} ${tile.lock===1?'key':'keys'}`;$('subprompt').textContent='Undo and take a path through a key tile ⚿.';$('announcement').textContent=$('prompt').textContent;return;}
+ if(tile.lock&&keyCount()<tile.lock){$('prompt').textContent=`This gate needs ${tile.lock} ${tile.lock===1?'key':'keys'}`;$('subprompt').textContent='Undo and take a path through a key tile ⚿.';$('announcement').textContent=$('prompt').textContent;cue('locked');return;}
  if(tile.entry!==n.next){const b=document.querySelector(`[data-id="${tile.id}"]`);b.classList.remove('wrong');void b.offsetWidth;b.classList.add('wrong');$('prompt').textContent='Look for the same symbol';clearTimeout(feedbackTimer);feedbackTimer=setTimeout(render,1100);tone(160,.08);return;}
  clearTimeout(feedbackTimer);clearTimeout(animationTimer);
  // Commit the move immediately. Animation is decoration, never an input lock.
- path.push(tile);render();const rabbit=$('rabbit');rabbit.classList.remove('hopping');void rabbit.offsetWidth;rabbit.classList.add('hopping');tone(420+tile.r*65,.12);
+ path.push(tile);render();const rabbit=$('rabbit');rabbit.classList.remove('hopping');void rabbit.offsetWidth;rabbit.classList.add('hopping');
+ if(n.spring)cue('spring');else if(tile.lock)cue('unlock');else if(tile.key)cue('key');else if(tile.spring)cue('springReady');else if(tile.entry===4)cue('sun');else if(level.garden===1)cue('nearby');else tone(420+tile.r*65,.12);
+ if(tile.key&&(n.spring||tile.lock))cue('key');if(tile.lock&&n.spring)cue('unlock');if(tile.star&&!tile.key&&!tile.lock)cue('star');
  $('announcement').textContent=`Row ${tile.r+1} of ${level.rows}. ${tile.key?'Key collected. ':''}${tile.star?'Star collected.':''}`;
  if(tile.star||tile.key)celebrate();
  if(tile.r===level.rows-1)animationTimer=setTimeout(win,180);
 }
 function celebrate(){for(let i=0;i<8;i++){const s=document.createElement('span');s.className='confetti';s.textContent='✦';s.style.left=(25+Math.random()*50)+'%';s.style.top=(60+Math.random()*150)+'px';$('playfield').append(s);setTimeout(()=>s.remove(),1100);}}
-function persist(){try{localStorage.setItem('tilehop-v1',JSON.stringify({level:levelIndex,records}));}catch(_){}}
+function persist(){try{localStorage.setItem('tilehop-v1',JSON.stringify({level:levelIndex,records,tutorialsSeen}));}catch(_){}}
 function modal(html){$('dialog-content').innerHTML=html;if(!$('dialog').open)$('dialog').showModal();}
 function close(){ $('dialog').close(); }
 function win(){
  const stars=path.filter(t=>t.star).length,g=level.garden,wasComplete=gardenComplete(g),wasGameComplete=GARDENS.every((_,i)=>gardenComplete(i));
- records[levelIndex]=Math.max(Number(records[levelIndex])||0,stars);persist();render();celebrate();tone(880,.25);
+ records[levelIndex]=Math.max(Number(records[levelIndex])||0,stars);persist();render();celebrate();
  if(!wasGameComplete&&GARDENS.every((_,i)=>gardenComplete(i))){showFinale();return;}
  if(!wasComplete&&gardenComplete(g)){showGardenWin(g);return;}
+ cue('complete');
  const next=Array.from({length:12},(_,i)=>g*12+i).find(i=>!completed(i));
  modal(`<div class="big-icon">${GARDENS[g].icon}</div><div class="eyebrow">A LITTLE MOMENT TO CELEBRATE</div><h2>Look how far you hopped.</h2><p>You reached the top of ${title(levelIndex).toLowerCase()}! ${stars?`You found ${stars===1?'a little star':`${stars} little stars`} along the way. `:''}Another little adventure is waiting.</p><button class="primary" id="next-level">${next===undefined?'Explore the gardens':'Next little climb →'}</button><button class="secondary" id="again">Try another route</button>`);
  $('next-level').onclick=()=>{close();next===undefined?showLevels():load(next);};$('again').onclick=()=>{close();load(levelIndex);};
 }
 function showGardenWin(g){
+ cue('garden');
  modal(`<div class="garden-celebration"><div class="big-icon">${GARDENS[g].icon}</div><div class="eyebrow">ALL 12 CLIMBS COMPLETE</div><h2>${GARDENS[g].name} complete!</h2><p>${GARDENS[g].message}</p>${g<GARDENS.length-1?`<div class="unlock-card"><span>NEW GARDEN UNLOCKED</span><strong>${GARDENS[g+1].icon} ${GARDENS[g+1].name}</strong><p>${GARDENS[g+1].rule}</p></div>`:''}<button class="primary" id="next-garden">${g<GARDENS.length-1?'Enter the next garden →':'Explore the gardens'}</button><button class="secondary" id="garden-map">View your adventure</button></div>`);
  $('next-garden').onclick=()=>{close();g<GARDENS.length-1?load(firstUnfinished(g+1)):showLevels();};$('garden-map').onclick=showLevels;
 }
 function showFinale(){
+ cue('finale');
  celebrate();modal(`<div class="finale"><div class="finale-crown">✦ 🌙 ✦</div><div class="eyebrow">EVERY GARDEN. EVERY LITTLE CLIMB.</div><h2>CONGRATULATIONS!</h2><h3>You beat Tile Hop!</h3><p><strong>Starlight Sanctuary complete!</strong> You completed all <strong>60 levels</strong> across <strong>5 gardens</strong>. From your first flower to your final spring, you found a way through every puzzle.</p><div class="garden-medals">${GARDENS.map(g=>`<span title="${g.name}">${g.icon}</span>`).join('')}</div><p>The whole garden is blooming because of you. Take a moment to enjoy it—you earned this view.</p><button class="primary" id="garden-map">Explore your completed gardens</button><button class="secondary" id="close">Enjoy the view</button></div>`);
  $('garden-map').onclick=showLevels;$('close').onclick=close;
 }
@@ -146,10 +153,11 @@ function showLevels(selected=level.garden){
  document.querySelectorAll('[data-level]').forEach(b=>b.onclick=()=>{close();load(Number(b.dataset.level));});if($('finale'))$('finale').onclick=showFinale;$('close').onclick=close;
 }
 function tone(freq,duration){window.TileHopAudio?.effect(freq,duration);}
+function cue(name){window.TileHopAudio?.cue(name);}
 $('undo').onclick=()=>{if(path.length===1)return;clearTimeout(animationTimer);clearTimeout(feedbackTimer);path.pop();render();tone(300,.08);};$('restart').onclick=()=>load(levelIndex);
 $('hint').onclick=()=>{const route=bestRoute(current());if(!route){$('prompt').textContent='Try undoing your last hop';$('announcement').textContent='This path cannot reach the top. Undo your last hop.';return;}const next=route.route[0];if(next){document.querySelector(`[data-id="${next.id}"]`).classList.add('hinted');$('prompt').textContent='This tile leads toward home';}};
 $('levels').onclick=()=>showLevels();
-$('help').onclick=()=>{modal('<div class="big-icon">☁</div><div class="eyebrow">WELCOME TO TILE HOP</div><h2>A hop, a match, a smile.</h2><p><strong>1.</strong> Look at the big symbol on your current tile.<br><strong>2.</strong> Tap the same symbol in the row just above.<br><strong>3.</strong> After landing, follow the small symbol for your next match.</p><p>Plan ahead using the small symbols on other tiles. Reach the top to complete your climb. Stars are optional little discoveries on different routes; you don’t need to collect them all. Wrong taps are harmless; undo is always free. No timer, no rush.</p><button class="primary" id="close">Let’s hop →</button>');$('close').onclick=close;};
+$('help').onclick=()=>{modal('<div class="big-icon">☁</div><div class="eyebrow">WELCOME TO TILE HOP</div><h2>A hop, a match, a smile.</h2><p><strong>1.</strong> Look at the big symbol on your current tile.<br><strong>2.</strong> Tap the same symbol in the next reachable row.<br><strong>3.</strong> The small symbol previews your next match.</p><p>Reach the top to complete your climb. Stars are optional little discoveries. Wrong taps are harmless; undo is always free. No timer, no rush.</p><button class="primary" id="review-lesson">Show this garden’s example</button><button class="secondary" id="close">Let’s hop →</button>');$('review-lesson').onclick=()=>{close();showLesson();};$('close').onclick=close;};
 if(!unlockedGarden(Math.floor(levelIndex/12)))levelIndex=firstUnfinished(0);
 load(levelIndex);
 // Pure generation and solver helpers are exposed for lightweight offline checks.
