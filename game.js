@@ -46,13 +46,15 @@ function render(){
  const n=current(),board=$('board');board.innerHTML='';$('playfield').style.height=(level.rows===5?400:350)+'px';
  for(const tile of [level.start,...level.nodes]){
   const p=position(tile),b=document.createElement('button');b.className='tile'+(tile.r<n.r?' past':'')+(tile.id===n.id?' current':'');b.style.left=p.x+'%';b.style.top=p.y+'px';b.dataset.id=tile.id;
-  b.innerHTML=symbolHTML(tile.id===n.id?tile.next:tile.entry)+(tile.id===n.id?'':symbolHTML(tile.next,'next'))+(tile.star?'<span class="star">✦</span>':'');b.setAttribute('aria-label',`${['Flower','Diamond','Moon','Clover'][tile.entry]} tile, next match ${['flower','diamond','moon','clover'][tile.next]}${tile.star?', with star':''}`);b.disabled=tile.r!==n.r+1;b.onclick=()=>hop(tile);board.append(b);
+  const isFinish=tile.r===level.rows-1;
+  b.innerHTML=symbolHTML(tile.id===n.id&&!isFinish?tile.next:tile.entry)+(tile.id===n.id||isFinish?'':symbolHTML(tile.next,'next'))+(tile.star?'<span class="star">✦</span>':'');b.setAttribute('aria-label',`${['Flower','Diamond','Moon','Clover'][tile.entry]} tile${isFinish?', finish':`, next match ${['flower','diamond','moon','clover'][tile.next]}`}${tile.star?', with star':''}`);b.disabled=tile.r!==n.r+1;b.onclick=()=>hop(tile);board.append(b);
  }
  const rabbit=document.createElement('div');rabbit.id='rabbit';rabbit.className='rabbit';rabbit.innerHTML=bunny;const p=position(n);rabbit.style.left=p.x+'%';rabbit.style.top=(p.y-19)+'px';board.append(rabbit);
- $('progress').style.width=((path.length-1)/level.rows*100)+'%';$('match').innerHTML=symbolHTML(n.next);$('stars').textContent=path.filter(t=>t.star).length;$('undo').disabled=path.length===1;
+ const finished=n.r===level.rows-1;
+ $('progress').style.width=((path.length-1)/level.rows*100)+'%';$('match').innerHTML=finished?'✦':symbolHTML(n.next);$('stars').textContent=path.filter(t=>t.star).length;$('undo').disabled=path.length===1;
  const stuck=choices(n).length===0&&n.r<level.rows-1;
- $('prompt').textContent=stuck?'A little detour!':path.length===1&&levelIndex===0?'Tap a flower to hop':'Find '+['a flower','a diamond','a moon','a clover'][n.next];
- $('subprompt').textContent=stuck?'Undo a hop and try another path.':'Small symbol = your next match. ✦ = bonus star.';
+ $('prompt').textContent=finished?'You made it to the top!':stuck?'A little detour!':path.length===1&&levelIndex===0?'Tap a flower to hop':'Find '+['a flower','a diamond','a moon','a clover'][n.next];
+ $('subprompt').textContent=finished?'Enjoy the view. Your climb is complete.':stuck?'Undo a hop and try another path.':'Small symbol = your next match. ✦ = bonus star.';
 }
 function hop(tile){
  if(busy)return;
