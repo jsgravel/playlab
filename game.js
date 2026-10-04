@@ -1,17 +1,33 @@
 'use strict';
-const SYMBOLS = ['✿', '◆', '☾', '♣'];
-const COLORS = ['#ca805f','#ba983d','#7a8cac','#64875b'];
+const SYMBOLS = ['✿', '◆', '☾', '♣', '☀'];
+const COLORS = ['#ca805f','#ba983d','#7a8cac','#64875b','#b36e9a'];
+const SYMBOL_NAMES = ['flower','diamond','moon','clover','sun'];
+const GARDENS = [
+ {name:'Clover Garden',icon:'🌿',theme:'clover',rule:'Match tiles and find your way to the top.',message:'Every little flower has opened. Your first garden is complete!',titles:[]},
+ {name:'Willow Walk',icon:'🍃',theme:'willow',rule:'Willow branches reach only one column sideways. Plan nearby hops.',message:'You found your way through the winding willows!',titles:['A nearby branch','Across the brook','Willow whispers','The winding way','Leaf by leaf','A narrow crossing','Branching thoughts','Bend with the breeze','The quiet bank','Roots and routes','Between the leaves','The willow gate']},
+ {name:'Lantern Orchard',icon:'🏮',theme:'lantern',rule:'Collect a key ⚿ before landing on a locked tile ▣. Keys stay with you.',message:'The orchard lanterns are glowing. You opened every garden gate!',titles:['The first little key','An orchard gate','Under the lanterns','Pick your path','A hidden doorway','Golden branches','The keeper’s trail','A key detour','Lantern lanes','Behind the gate','The last orchard key','All lanterns alight']},
+ {name:'Cloud Springs',icon:'☁',theme:'cloud',rule:'Land on a spring ↑↑ to jump over the next row. Match two rows above!',message:'You danced over the clouds and brought the springs to life!',titles:['A spring in your step','Above the mist','A gentle lift','Cloud stepping','Over the rainbow','Two rows higher','The floating key','A skyward shortcut','Beyond the drizzle','The cloud crossing','A soft landing','The cloud gateway']},
+ {name:'Starlight Sanctuary',icon:'🌙',theme:'starlight',rule:'A fifth symbol, nearby hops, springs, and two-key gates. Take your time.',message:'The sanctuary is shining. Every garden in your adventure is complete!',titles:['The fifth little symbol','Moonlit branches','Two little keys','A starry spring','The patient path','Midnight lanterns','The silver crossing','Constellation climb','A winding wish','The final gateway','Almost among the stars','A home in starlight']}
+];
+const LEVELS_PER_GARDEN=12,TOTAL_LEVELS=GARDENS.length*LEVELS_PER_GARDEN;
 const NAMES = ['First little steps','A fork in the flowers','Follow the moon','The scenic route','Clover company','A golden detour','Above the treetops','Petal paths','Cloud companions','The long way home','One more little hop','A home in the clouds'];
 const $ = id => document.getElementById(id);
 let saved = {};
 try { saved = JSON.parse(localStorage.getItem('tilehop-v1') || '{}') || {}; } catch (_) {}
-let levelIndex = Math.min(11, Math.max(0, Math.floor(Number(saved.level) || 0)));
+let levelIndex = Math.min(TOTAL_LEVELS-1, Math.max(0, Math.floor(Number(saved.level) || 0)));
 let records = saved.records && typeof saved.records === 'object' ? saved.records : {};
 let level, path, busy = false, animationTimer, feedbackTimer;
+function completed(index){return Object.hasOwn(records,index);}
+function gardenComplete(g){return Array.from({length:12},(_,i)=>completed(g*12+i)).every(Boolean);}
+function unlockedGarden(g){return g===0||Array.from({length:g},(_,i)=>gardenComplete(i)).every(Boolean);}
+function title(index){return index<12?NAMES[index]:GARDENS[Math.floor(index/12)].titles[index%12];}
+function firstUnfinished(g){return Array.from({length:12},(_,i)=>g*12+i).find(i=>!completed(i))??g*12;}
+function keyCount(route=path){return route.filter(n=>n.key).length;}
 function random(seed) { return () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; }; }
-// Every board includes two complete paths. Cross-route choices can require an undo;
+// Every board includes a complete path. Cross-route choices can require an undo;
 // the hint solver checks the entire remaining route, not just the next match.
 function makeLevel(index) {
+ if(index>=12)return makeAdvancedLevel(index);
  const rng = random(427 + index * 173), rows = 4 + Math.floor(index / 8), nodes = [];
  const routes = [[], []];
  for (let r = 0; r < rows; r++) {
@@ -27,53 +43,111 @@ function makeLevel(index) {
  symbol=start.next;
  for(let r=0;r<rows;r++) {const n=routes[1][r]; if(!routes[0].includes(n)) n.entry=symbol; symbol=n.next;}
  for(let r=1;r<rows;r++) {const candidates=nodes.filter(n=>n.r===r); candidates[Math.floor(rng()*candidates.length)].star=true;}
- return {nodes,start,rows};
+ return {nodes,start,rows,count:index===0?2:3,garden:0};
+}
+function makeAdvancedLevel(index){
+ const garden=Math.floor(index/12),local=index%12,rng=random(427+index*173);
+ const rows=garden===1?5:garden===2?5+Number(local>=6):garden===3?6:6+Number(local>=6);
+ const count=garden<2?3:4,symbols=garden===4?5:4,nodes=[];
+ for(let r=0;r<rows;r++)for(let c=0;c<count;c++)nodes.push({id:`${r}-${c}`,r,c,entry:Math.floor(rng()*symbols),next:Math.floor(rng()*symbols),star:false});
+ const start={id:'start',r:-1,c:1,entry:index%symbols,next:index%symbols};
+ let previous=start,r=0;
+ while(r<rows){
+  const candidates=nodes.filter(n=>n.r===r&&Math.abs(n.c-previous.c)<=1),n=candidates[Math.floor(rng()*candidates.length)];
+  n.entry=previous.next;
+  const firstKeyRow=garden===2?(local<6?1:2):garden===3?(local<6?0:3):0;
+  if(garden>=2&&r===firstKeyRow)n.key=true;
+  if(garden===4&&r===3)n.key=true;
+  if(garden>=2&&r===rows-1)n.lock=garden===4?2:1;
+  if(garden>=3&&r===1)n.spring=true;
+  previous=n;r+=n.spring?2:1;
+ }
+ // Extra branches have genuine consequences, while the authored backbone remains solvable.
+ for(const n of nodes){
+  if(garden>=2&&!n.key&&!n.lock&&n.r>1&&rng()<.18)n.lock=garden===4&&n.r>3?2:1;
+  if(garden>=3&&n.r===2&&rng()<.35)n.spring=true;
+  if(n.r>0&&rng()<.25)n.star=true;
+ }
+ return {nodes,start,rows,count,garden};
 }
 function current(){return path[path.length-1];}
-function choices(n){return level.nodes.filter(t=>t.r===n.r+1&&t.entry===n.next);}
-function bestRoute(n) {
+function reachable(n,t,keys=keyCount()){return t.r===n.r+(n.spring?2:1)&&(level.garden===0||Math.abs(t.c-n.c)<=1)&&(!t.lock||keys>=t.lock);}
+function choices(n,keys=keyCount()){return level.nodes.filter(t=>reachable(n,t,keys)&&t.entry===n.next);}
+function bestRoute(n,keys=keyCount()) {
  if(n.r===level.rows-1)return {score:0,route:[]};
  let best=null;
- for(const t of choices(n)){const rest=bestRoute(t);if(rest){const score=rest.score+(t.star?1:0);if(!best||score>best.score)best={score,route:[t,...rest.route]};}}
+ for(const t of choices(n,keys)){const rest=bestRoute(t,keys+(t.key?1:0));if(rest){const score=rest.score+(t.star?1:0);if(!best||score>best.score)best={score,route:[t,...rest.route]};}}
  return best;
 }
 function symbolHTML(s,cls='symbol'){return `<span class="${cls}" style="color:${COLORS[s]}">${SYMBOLS[s]}</span>`;}
-function position(n){const height=level.rows===5?400:350;return {x:n.r<0?50: (n.c+1)*100/((levelIndex===0?2:3)+1),y:height-40-(n.r+1)*((height-80)/level.rows)};}
+function boardHeight(){return level.rows*68+115;}
+function position(n){return {x:n.r<0&&level.garden===0?50:(n.c+1)*100/(level.count+1),y:boardHeight()-40-(n.r+1)*68};}
 const bunny = '<svg viewBox="0 0 50 60" aria-hidden="true"><ellipse cx="18" cy="17" rx="5" ry="15" fill="#fff9e9" stroke="#bcbfa6"/><ellipse cx="32" cy="15" rx="5" ry="15" fill="#fff9e9" stroke="#bcbfa6"/><path d="M18 7v15M32 5v15" stroke="#e4b5a2" stroke-width="3" stroke-linecap="round"/><ellipse cx="25" cy="43" rx="16" ry="15" fill="#fff9e9" stroke="#bcbfa6"/><ellipse cx="25" cy="31" rx="17" ry="14" fill="#fff9e9" stroke="#bcbfa6"/><circle cx="19" cy="30" r="1.6" fill="#3f5946"/><circle cx="31" cy="30" r="1.6" fill="#3f5946"/><path d="m23 34 2 2 2-2" fill="#cf9686"/><circle cx="15" cy="35" r="3" fill="#edc8af"/><circle cx="35" cy="35" r="3" fill="#edc8af"/><ellipse cx="16" cy="55" rx="7" ry="3" fill="#fff9e9"/><ellipse cx="34" cy="55" rx="7" ry="3" fill="#fff9e9"/></svg>';
-function load(index){clearTimeout(animationTimer);clearTimeout(feedbackTimer);levelIndex=index;level=makeLevel(index);path=[level.start];busy=false;render();persist();}
+function load(index){if(!Number.isInteger(index)||index<0||index>=TOTAL_LEVELS||!unlockedGarden(Math.floor(index/12)))return false;clearTimeout(animationTimer);clearTimeout(feedbackTimer);levelIndex=index;level=makeLevel(index);path=[level.start];busy=false;render();persist();return true;}
 function render(){
- $('level-title').textContent=NAMES[levelIndex];$('chapter').textContent=levelIndex<4?'THE CLOVER GARDEN':levelIndex<8?'ABOVE THE TREETOPS':'THE CLOUD GARDEN';$('levels').textContent=`${String(levelIndex+1).padStart(2,'0')} / 12`;
- const n=current(),board=$('board');board.innerHTML='';$('playfield').style.height=(level.rows===5?400:350)+'px';
+ const garden=GARDENS[level.garden];
+ $('level-title').textContent=title(levelIndex);$('chapter').textContent=`${level.garden+1} / ${GARDENS.length} · ${garden.name.toUpperCase()}`;$('levels').textContent=`${String(levelIndex%12+1).padStart(2,'0')} / 12`;
+ $('garden-rule').textContent=garden.rule;$('garden-progress').textContent=`${Array.from({length:12},(_,i)=>completed(level.garden*12+i)).filter(Boolean).length} of 12 climbs complete`;
+ const n=current(),board=$('board');board.innerHTML='';$('playfield').style.height=boardHeight()+'px';$('playfield').dataset.theme=garden.theme;$('playfield').dataset.columns=String(level.count);
  for(const tile of [level.start,...level.nodes]){
   const p=position(tile),b=document.createElement('button');b.className='tile'+(tile.r<n.r?' past':'')+(tile.id===n.id?' current':'');b.style.left=p.x+'%';b.style.top=p.y+'px';b.dataset.id=tile.id;
   const isFinish=tile.r===level.rows-1;
-  b.innerHTML=symbolHTML(tile.id===n.id&&!isFinish?tile.next:tile.entry)+(tile.id===n.id||isFinish?'':symbolHTML(tile.next,'next'))+(tile.star?'<span class="star">✦</span>':'');b.setAttribute('aria-label',`${['Flower','Diamond','Moon','Clover'][tile.entry]} tile${isFinish?', finish':`, next match ${['flower','diamond','moon','clover'][tile.next]}`}${tile.star?', with star':''}`);b.disabled=tile.r!==n.r+1;b.onclick=()=>hop(tile);board.append(b);
+  b.innerHTML=symbolHTML(tile.id===n.id&&!isFinish?tile.next:tile.entry)+(tile.id===n.id||isFinish?'':symbolHTML(tile.next,'next'))+(tile.star?'<span class="star">✦</span>':'')+((tile.key||tile.lock||tile.spring)?`<span class="mechanic">${tile.key?'⚿ ':''}${tile.lock?'▣'+tile.lock+' ':''}${tile.spring?'↑↑':''}</span>`:'');
+  b.setAttribute('aria-label',`${SYMBOL_NAMES[tile.entry]} tile${isFinish?', finish':`, next match ${SYMBOL_NAMES[tile.next]}`}${tile.star?', with star':''}${tile.key?', collect a key':''}${tile.lock?`, requires ${tile.lock} keys`:''}${tile.spring?', spring: next jump skips one row':''}`);
+  const inRow=tile.r===n.r+(n.spring?2:1),nearby=level.garden===0||Math.abs(tile.c-n.c)<=1;
+  b.disabled=!inRow||!nearby;
+  if(inRow&&!nearby)b.classList.add('out-of-reach');
+  if(tile.lock&&keyCount()<tile.lock)b.classList.add('locked');
+  b.onclick=()=>hop(tile);board.append(b);
  }
  const rabbit=document.createElement('div');rabbit.id='rabbit';rabbit.className='rabbit';rabbit.innerHTML=bunny;const p=position(n);rabbit.style.left=p.x+'%';rabbit.style.top=(p.y-19)+'px';board.append(rabbit);
  const finished=n.r===level.rows-1;
  $('progress').style.width=((path.length-1)/level.rows*100)+'%';$('match').innerHTML=finished?'✦':symbolHTML(n.next);$('stars').textContent=path.filter(t=>t.star).length;$('undo').disabled=path.length===1;
  const stuck=choices(n).length===0&&n.r<level.rows-1;
- $('prompt').textContent=finished?'You made it to the top!':stuck?'A little detour!':path.length===1&&levelIndex===0?'Tap a flower to hop':'Find '+['a flower','a diamond','a moon','a clover'][n.next];
- $('subprompt').textContent=finished?'Enjoy the view. Your climb is complete.':stuck?'Undo a hop and try another path.':'Small symbol = your next match. ✦ = bonus star.';
+ $('prompt').textContent=finished?'You made it to the top!':stuck?'A little detour!':path.length===1&&levelIndex===0?'Tap a flower to hop':'Find a '+SYMBOL_NAMES[n.next];
+ $('subprompt').textContent=finished?'Enjoy the view. Your climb is complete.':stuck?'Undo a hop and try another path.':n.spring?'Spring hop! Match two rows above.':level.garden>=2?`⚿ ${keyCount()} ${keyCount()===1?'key':'keys'} collected · ▣ gates need keys.`:level.garden===1?'Stay nearby: at most one column sideways.':'Small symbol = your next match. ✦ = bonus star.';
 }
 function hop(tile){
  if(busy)return;
- const n=current();if(tile.r!==n.r+1)return;
+ const n=current();if(tile.r!==n.r+(n.spring?2:1)||level.garden>0&&Math.abs(tile.c-n.c)>1)return;
+ if(tile.lock&&keyCount()<tile.lock){$('prompt').textContent=`This gate needs ${tile.lock} ${tile.lock===1?'key':'keys'}`;$('subprompt').textContent='Undo and take a path through a key tile ⚿.';$('announcement').textContent=$('prompt').textContent;return;}
  if(tile.entry!==n.next){const b=document.querySelector(`[data-id="${tile.id}"]`);b.classList.remove('wrong');void b.offsetWidth;b.classList.add('wrong');$('prompt').textContent='Look for the same symbol';clearTimeout(feedbackTimer);feedbackTimer=setTimeout(()=>{if(!busy)render();},1100);tone(160,.08);return;}
  busy=true;clearTimeout(feedbackTimer);const rabbit=$('rabbit'),p=position(tile);rabbit.classList.add('hopping');rabbit.style.left=p.x+'%';rabbit.style.top=(p.y-19)+'px';tone(420+tile.r*65,.12);
- animationTimer=setTimeout(()=>{path.push(tile);busy=false;render();$('announcement').textContent=`Hop ${path.length-1} of ${level.rows}. ${tile.star?'Star collected.':''}`;if(tile.star)celebrate();if(tile.r===level.rows-1)win();},400);
+ animationTimer=setTimeout(()=>{path.push(tile);busy=false;render();$('announcement').textContent=`Row ${tile.r+1} of ${level.rows}. ${tile.key?'Key collected. ':''}${tile.star?'Star collected.':''}`;if(tile.star||tile.key)celebrate();if(tile.r===level.rows-1)win();},400);
 }
 function celebrate(){for(let i=0;i<8;i++){const s=document.createElement('span');s.className='confetti';s.textContent='✦';s.style.left=(25+Math.random()*50)+'%';s.style.top=(60+Math.random()*150)+'px';$('playfield').append(s);setTimeout(()=>s.remove(),1100);}}
 function persist(){try{localStorage.setItem('tilehop-v1',JSON.stringify({level:levelIndex,records}));}catch(_){}}
 function modal(html){$('dialog-content').innerHTML=html;if(!$('dialog').open)$('dialog').showModal();}
 function close(){ $('dialog').close(); }
-function win(){const stars=path.filter(t=>t.star).length;records[levelIndex]=Math.max(Number(records[levelIndex])||0,stars);persist();celebrate();tone(880,.25);modal(`<div class="big-icon">🌿</div><div class="eyebrow">A LITTLE MOMENT TO CELEBRATE</div><h2>${levelIndex===11?'Home in the clouds!':'Look how far you hopped.'}</h2><p>You reached the top of ${NAMES[levelIndex].toLowerCase()}! ${stars?`You found ${stars===1?'a little star':`${stars} little stars`} along the way. `:''}${levelIndex===11?'Your garden adventure is complete. Come back for another peaceful climb whenever you like.':'Another little adventure is waiting.'}</p><button class="primary" id="next-level">${levelIndex===11?'Explore the gardens':'Next little climb →'}</button><button class="secondary" id="again">Try another route</button>`);$('next-level').onclick=()=>{close();if(levelIndex===11)showLevels();else load(levelIndex+1);};$('again').onclick=()=>{close();load(levelIndex);};}
-function showLevels(){modal('<div class="eyebrow">YOUR LITTLE ADVENTURE</div><h2>Pick a garden.</h2><p>Explore at your own pace. Every climb is open.</p><div class="level-grid">'+NAMES.map((name,i)=>`<button data-level="${i}" aria-label="Level ${i+1}: ${name}${Object.hasOwn(records,i)?', completed':''}">${String(i+1).padStart(2,'0')}<small>${Object.hasOwn(records,i)?'✓':'·'}</small></button>`).join('')+'</div><button class="secondary" id="close">Back to the climb</button>');document.querySelectorAll('[data-level]').forEach(b=>b.onclick=()=>{close();load(Number(b.dataset.level));});$('close').onclick=close;}
+function win(){
+ const stars=path.filter(t=>t.star).length,g=level.garden,wasComplete=gardenComplete(g),wasGameComplete=GARDENS.every((_,i)=>gardenComplete(i));
+ records[levelIndex]=Math.max(Number(records[levelIndex])||0,stars);persist();render();celebrate();tone(880,.25);
+ if(!wasGameComplete&&GARDENS.every((_,i)=>gardenComplete(i))){showFinale();return;}
+ if(!wasComplete&&gardenComplete(g)){showGardenWin(g);return;}
+ const next=Array.from({length:12},(_,i)=>g*12+i).find(i=>!completed(i));
+ modal(`<div class="big-icon">${GARDENS[g].icon}</div><div class="eyebrow">A LITTLE MOMENT TO CELEBRATE</div><h2>Look how far you hopped.</h2><p>You reached the top of ${title(levelIndex).toLowerCase()}! ${stars?`You found ${stars===1?'a little star':`${stars} little stars`} along the way. `:''}Another little adventure is waiting.</p><button class="primary" id="next-level">${next===undefined?'Explore the gardens':'Next little climb →'}</button><button class="secondary" id="again">Try another route</button>`);
+ $('next-level').onclick=()=>{close();next===undefined?showLevels():load(next);};$('again').onclick=()=>{close();load(levelIndex);};
+}
+function showGardenWin(g){
+ modal(`<div class="garden-celebration"><div class="big-icon">${GARDENS[g].icon}</div><div class="eyebrow">ALL 12 CLIMBS COMPLETE</div><h2>${GARDENS[g].name} complete!</h2><p>${GARDENS[g].message}</p>${g<GARDENS.length-1?`<div class="unlock-card"><span>NEW GARDEN UNLOCKED</span><strong>${GARDENS[g+1].icon} ${GARDENS[g+1].name}</strong><p>${GARDENS[g+1].rule}</p></div>`:''}<button class="primary" id="next-garden">${g<GARDENS.length-1?'Enter the next garden →':'Explore the gardens'}</button><button class="secondary" id="garden-map">View your adventure</button></div>`);
+ $('next-garden').onclick=()=>{close();g<GARDENS.length-1?load(firstUnfinished(g+1)):showLevels();};$('garden-map').onclick=showLevels;
+}
+function showFinale(){
+ celebrate();modal(`<div class="finale"><div class="finale-crown">✦ 🌙 ✦</div><div class="eyebrow">EVERY GARDEN. EVERY LITTLE CLIMB.</div><h2>CONGRATULATIONS!</h2><h3>You beat Tile Hop!</h3><p><strong>Starlight Sanctuary complete!</strong> You completed all <strong>60 levels</strong> across <strong>5 gardens</strong>. From your first flower to your final spring, you found a way through every puzzle.</p><div class="garden-medals">${GARDENS.map(g=>`<span title="${g.name}">${g.icon}</span>`).join('')}</div><p>The whole garden is blooming because of you. Take a moment to enjoy it—you earned this view.</p><button class="primary" id="garden-map">Explore your completed gardens</button><button class="secondary" id="close">Enjoy the view</button></div>`);
+ $('garden-map').onclick=showLevels;$('close').onclick=close;
+}
+function showLevels(selected=level.garden){
+ const g=Number.isInteger(selected)?Math.max(0,Math.min(4,selected)):level.garden,open=unlockedGarden(g),done=Array.from({length:12},(_,i)=>completed(g*12+i)).filter(Boolean).length;
+ modal(`<div class="eyebrow">YOUR ADVENTURE · ${Object.keys(records).filter(k=>Number(k)>=0&&Number(k)<TOTAL_LEVELS).length} / 60 CLIMBS</div><h2>The garden trail.</h2><div class="garden-tabs">${GARDENS.map((garden,i)=>`<button data-garden="${i}" class="${i===g?'selected':''}" aria-label="${garden.name}${!unlockedGarden(i)?', locked':''}" aria-pressed="${i===g}">${garden.icon}<small>${gardenComplete(i)?'✓':unlockedGarden(i)?String(i+1):'▣'}</small></button>`).join('')}</div><h3>${GARDENS[g].name}</h3><p>${open?GARDENS[g].rule:`Complete all 12 climbs in ${GARDENS[g-1].name} to unlock this garden.`}</p>${open?`<div class="map-progress">${done} / 12 complete ${done===12?'· Garden blooming!':''}</div><div class="level-grid">${Array.from({length:12},(_,i)=>{const index=g*12+i;return `<button data-level="${index}" aria-label="${title(index)}${completed(index)?', completed':''}">${String(i+1).padStart(2,'0')}<small>${completed(index)?'✓':'·'}</small></button>`;}).join('')}</div>`:'<div class="locked-garden">▣<p>A new adventure is waiting beyond the gate.</p></div>'}${GARDENS.every((_,i)=>gardenComplete(i))?'<button class="primary" id="finale">Celebrate your adventure ✦</button>':''}<button class="secondary" id="close">Back to the climb</button>`);
+ document.querySelectorAll('[data-garden]').forEach(b=>b.onclick=()=>showLevels(Number(b.dataset.garden)));
+ document.querySelectorAll('[data-level]').forEach(b=>b.onclick=()=>{close();load(Number(b.dataset.level));});if($('finale'))$('finale').onclick=showFinale;$('close').onclick=close;
+}
 function tone(freq,duration){window.TileHopAudio?.effect(freq,duration);}
 $('undo').onclick=()=>{if(busy||path.length===1)return;path.pop();render();tone(300,.08);};$('restart').onclick=()=>load(levelIndex);
 $('hint').onclick=()=>{if(busy)return;const route=bestRoute(current());if(!route){$('prompt').textContent='Try undoing your last hop';$('announcement').textContent='This path cannot reach the top. Undo your last hop.';return;}const next=route.route[0];if(next){document.querySelector(`[data-id="${next.id}"]`).classList.add('hinted');$('prompt').textContent='This tile leads toward home';}};
-$('levels').onclick=showLevels;
+$('levels').onclick=()=>showLevels();
 $('help').onclick=()=>{modal('<div class="big-icon">☁</div><div class="eyebrow">WELCOME TO TILE HOP</div><h2>A hop, a match, a smile.</h2><p><strong>1.</strong> Look at the big symbol on your current tile.<br><strong>2.</strong> Tap the same symbol in the row just above.<br><strong>3.</strong> After landing, follow the small symbol for your next match.</p><p>Plan ahead using the small symbols on other tiles. Reach the top to complete your climb. Stars are optional little discoveries on different routes; you don’t need to collect them all. Wrong taps are harmless; undo is always free. No timer, no rush.</p><button class="primary" id="close">Let’s hop →</button>');$('close').onclick=close;};
+if(!unlockedGarden(Math.floor(levelIndex/12)))levelIndex=firstUnfinished(0);
 load(levelIndex);
 // Pure generation and solver helpers are exposed for lightweight offline checks.
-window.TileHop={makeLevel,getState:()=>({levelIndex,level,path:[...path],busy}),bestRoute,load};
+window.TileHop={makeLevel,getState:()=>({levelIndex,level,path:[...path],busy,records:{...records}}),bestRoute,load,completed,gardenComplete,unlockedGarden,showLevels};
