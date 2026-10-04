@@ -4,11 +4,12 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#183f36"><meta name="description" content="A gentle matching adventure. Follow the tiles, collect little stars, and hop home.">
   <title>Tile Hop · A little climb</title>
-  <link rel="stylesheet" href="style.css"><script src="game.js" defer></script>
+  <link rel="stylesheet" href="style.css"><script src="audio.js" defer></script><script src="game.js" defer></script>
 </head>
 <body>
 <main class="app">
-  <header><a class="brand" href="./">tile<span>hop</span><i>✦</i></a><button id="sound" class="icon-button" aria-label="Enable sound" aria-pressed="false">♫ <span>off</span></button></header>
+  <header><a class="brand" href="./">tile<span>hop</span><i>✦</i></a><div class="audio-buttons"><button id="music" class="icon-button" aria-label="Enable music" aria-pressed="false">♫ <span>Music off</span></button><button id="sound" class="icon-button" aria-label="Enable effects" aria-pressed="false">✧ <span>Effects off</span></button></div></header>
+  <details class="music-panel"><summary>Woodland radio <span id="now-playing">Four little fantasy melodies</span></summary><div class="music-settings"><label for="song">Your soundtrack</label><div class="song-picker"><select id="song"></select><button id="next-song" aria-label="Next song">↠</button></div><label for="music-volume">Music volume</label><input id="music-volume" type="range" min="0" max="100" value="45"><p>Soft flute, plucked strings, and warm harmonies. Songs play in order, then repeat.</p><span id="audio-status" role="status"></span></div></details>
   <section class="intro"><div class="eyebrow">A LITTLE CLIMB, A LITTLE JOY</div><h1>One hop closer<br>to the clouds.</h1><p>Find your match. Follow your curiosity.</p></section>
   <section class="game" aria-label="Tile Hop game">
     <div class="game-top"><div><span class="eyebrow" id="chapter">THE CLOVER GARDEN</span><h2 id="level-title">First little steps</h2></div><button id="levels" class="level-pill" aria-label="Choose level">01 / 12</button></div>

@@ -8,7 +8,7 @@ Open `index.html` directly, or serve this directory with any static server. No b
 
 ## Deploy on GitHub Pages
 
-1. Create a GitHub repository and upload `index.html`, `style.css`, `game.js`, and `.nojekyll` to its root.
+1. Create a GitHub repository and upload `index.html`, `style.css`, `audio.js`, `game.js`, and `.nojekyll` to its root.
 2. In the repository, open **Settings → Pages**.
 3. Select **Deploy from a branch**, choose your branch (usually `main`) and **/ (root)**, then save.
 4. Open the published URL displayed by GitHub Pages once deployment completes.
@@ -17,4 +17,4 @@ Relative asset links support both `username.github.io` and `username.github.io/r
 
 ## Controls
 
-Tap a tile; desktop users can also use Tab and Enter. Undo reverses a hop, Restart resets the current level, Hint highlights a route toward the top. The level selector allows any level at any time. Sound starts off and can be enabled with the music button. Reduced-motion preferences disable decorative animations.
+Tap a tile; desktop users can also use Tab and Enter. Undo reverses a hop, Restart resets the current level, Hint highlights a route toward the top. The level selector allows any level at any time. Music and effects have independent buttons and start off. Woodland Radio includes four original synthesized fantasy compositions, a song selector, next-song button, and music volume. Tracks play in order and repeat. Audio preferences are saved locally; returning players must interact before music starts. Audio pauses in background tabs. No external music files or copyrighted game recordings are used. Reduced-motion preferences disable decorative animations.
