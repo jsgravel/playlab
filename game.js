@@ -195,11 +195,22 @@ function gardenCards(selected){return `<div class="garden-tabs garden-cards">${G
 function tone(freq,duration){window.TileHopAudio?.effect(freq,duration);}
 function cue(name){window.TileHopAudio?.cue(name);}
 function finishPendingClimb(){if(animationTimer&&current().r===level.rows-1){clearTimeout(animationTimer);win();}}
+function showOptions(){
+ finishPendingClimb();
+ modal('<div class="eyebrow">TAKE A LITTLE PAUSE</div><h2>Options.</h2><div class="options-list"><button class="secondary" id="stats">▤ Show stats</button><button class="secondary" id="reset-game">Restart entire game…</button></div><p>Restarting the entire game erases saved progress. You’ll be asked to confirm first.</p><button class="primary" id="close">Back to the climb</button>');
+ $('stats').onclick=showStats;$('reset-game').onclick=warnReset;$('close').onclick=close;
+}
+function warnRestart(){
+ finishPendingClimb();
+ modal('<div class="eyebrow">TRY THIS CLIMB AGAIN?</div><h2>Restart this level?</h2><p>Your rabbit will return to the bottom of this climb and your current combo will reset. Completed levels and unlocked gardens stay saved.</p><p>This counts as one level restart in your stats.</p><button class="primary" id="cancel-restart" autofocus>Keep climbing</button><button class="secondary" id="confirm-restart">Yes, restart this level</button>');
+ $('cancel-restart').onclick=close;$('confirm-restart').onclick=()=>{close();stats.restarts++;markError();load(levelIndex);};
+ $('cancel-restart').focus?.({preventScroll:true});
+}
 function showStats(){
  finishPendingClimb();
  const cleared=Array.from({length:TOTAL_LEVELS},(_,i)=>completed(i)).filter(Boolean).length;
- modal(`<div class="eyebrow">YOUR LITTLE ADVENTURE</div><h2>Your stats.</h2><div class="stats-grid"><div><strong>${stats.undoUses}</strong><span>Undo uses</span></div><div><strong>${stats.restarts}</strong><span>Level restarts</span></div><div><strong>${Object.keys(stats.flawless).length}</strong><span>Flawless levels</span></div><div><strong>${cleared} / ${TOTAL_LEVELS}</strong><span>Levels completed</span></div><div><strong>${stats.bestCombo}×</strong><span>Best combo · Lantern Orchard onward</span></div></div><p>A flawless level is a climb completed without a wrong match, blocked-gate tap, undo, or restart. Each level counts once; a clean replay can earn its flawless mark.</p><p>Hints are welcome and do not count as mistakes. These stats started tracking with this update; earlier clears keep their progress, but have no recorded flawless result.</p><button class="secondary" id="reset-from-stats">Restart entire game…</button><button class="primary" id="close">Back to the garden</button>`);
- $('reset-from-stats').onclick=warnReset;$('close').onclick=close;
+ modal(`<div class="eyebrow">YOUR LITTLE ADVENTURE</div><h2>Your stats.</h2><div class="stats-grid"><div><strong>${stats.undoUses}</strong><span>Undo uses</span></div><div><strong>${stats.restarts}</strong><span>Level restarts</span></div><div><strong>${Object.keys(stats.flawless).length}</strong><span>Flawless levels</span></div><div><strong>${cleared} / ${TOTAL_LEVELS}</strong><span>Levels completed</span></div><div><strong>${stats.bestCombo}×</strong><span>Best combo · Lantern Orchard onward</span></div></div><p>A flawless level is a climb completed without a wrong match, blocked-gate tap, undo, or restart. Each level counts once; a clean replay can earn its flawless mark.</p><p>Hints are welcome and do not count as mistakes. These stats started tracking with this update; earlier clears keep their progress, but have no recorded flawless result.</p><button class="secondary" id="reset-from-stats">Back to options</button><button class="primary" id="close">Back to the garden</button>`);
+ $('reset-from-stats').onclick=showOptions;$('close').onclick=close;
 }
 function warnReset(){
  finishPendingClimb();
@@ -210,8 +221,8 @@ function warnReset(){
  };
  $('cancel-reset').focus?.({preventScroll:true});
 }
-$('undo').onclick=()=>{if(path.length===1)return;stats.undoUses++;markError();clearTimeout(animationTimer);clearTimeout(feedbackTimer);path.pop();render();tone(300,.08);};$('restart').onclick=()=>{stats.restarts++;markError();load(levelIndex);};
-$('stats').onclick=showStats;$('reset-game').onclick=warnReset;
+$('undo').onclick=()=>{if(path.length===1)return;stats.undoUses++;markError();clearTimeout(animationTimer);clearTimeout(feedbackTimer);path.pop();render();tone(300,.08);};$('restart').onclick=warnRestart;
+$('options').onclick=showOptions;
 $('hint').onclick=()=>{const route=bestRoute(current());if(!route){$('prompt').textContent='Try undoing your last hop';$('announcement').textContent='This path cannot reach the top. Undo your last hop.';return;}const next=route.route[0];if(next){document.querySelector(`[data-id="${next.id}"]`).classList.add('hinted');$('prompt').textContent='This tile leads toward home';}};
 $('levels').onclick=()=>showLevels();
 $('help').onclick=()=>{modal('<div class="big-icon">☁</div><div class="eyebrow">WELCOME TO TILE HOP</div><h2>A hop, a match, a smile.</h2><p><strong>1.</strong> Look at the big symbol on your current tile.<br><strong>2.</strong> Tap the same symbol in the next reachable row.<br><strong>3.</strong> The small symbol previews your next match.</p><p>Reach the top to complete your climb. Stars are optional little discoveries. Wrong taps are harmless; undo is always free. No timer, no rush.</p><button class="primary" id="review-lesson">Show this garden’s example</button><button class="secondary" id="close">Let’s hop →</button>');$('review-lesson').onclick=()=>{close();showLesson();};$('close').onclick=close;};

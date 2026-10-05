@@ -5,12 +5,12 @@
   <meta name="theme-color" content="#183f36"><meta name="description" content="A gentle matching adventure. Follow the tiles, collect little stars, and hop home.">
   <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Tile Hop"><link rel="manifest" href="manifest.webmanifest">
   <title>Tile Hop · A little climb</title>
-  <link rel="stylesheet" href="style.css?v=20261005-combos2"><script src="audio.js?v=20261005-combos2" defer></script><script src="tutorials.js?v=20261005-combos2" defer></script><script src="game.js?v=20261005-combos2" defer></script><script src="fullscreen.js?v=20261005-combos2" defer></script>
+  <link rel="stylesheet" href="style.css?v=20261005-options-music"><script src="audio.js?v=20261005-options-music" defer></script><script src="tutorials.js?v=20261005-options-music" defer></script><script src="game.js?v=20261005-options-music" defer></script><script src="fullscreen.js?v=20261005-options-music" defer></script>
 </head>
 <body>
 <main class="app">
   <header><a class="brand" href="./">tile<span>hop</span><i>✦</i></a><div class="audio-buttons"><button id="music" class="icon-button" aria-label="Enable music" aria-pressed="false">♫ <span>Music off</span></button><button id="sound" class="icon-button" aria-label="Enable effects" aria-pressed="false">✧ <span>Effects off</span></button></div></header>
-  <details class="music-panel"><summary>Woodland radio <span id="now-playing">Eight little fantasy melodies</span></summary><div class="music-settings"><label for="song">Your soundtrack</label><div class="song-picker"><select id="song"></select><button id="next-song" aria-label="Next song">↠</button></div><label for="music-volume">Music volume <output id="music-volume-value">45%</output></label><input id="music-volume" type="range" min="0" max="100" value="45"><label for="effects-volume">Effects volume <output id="effects-volume-value">65%</output></label><input id="effects-volume" type="range" min="0" max="100" value="65"><p>Flute, harp, bells, and warm harmonies. Songs play in order, then repeat. Music and effects can be muted separately.</p><span id="audio-status" role="status"></span></div></details>
+  <details class="music-panel"><summary>Woodland radio <span id="now-playing">12 melodies · 5 musical moods</span></summary><div class="music-settings"><label for="song">Your soundtrack</label><div class="song-picker"><select id="song"></select><button id="next-song" aria-label="Next song">↠</button></div><label for="music-volume">Music volume <output id="music-volume-value">45%</output></label><input id="music-volume" type="range" min="0" max="100" value="45"><label for="effects-volume">Effects volume <output id="effects-volume-value">65%</output></label><input id="effects-volume" type="range" min="0" max="100" value="65"><p>Fantasy flute and harp, soft piano, plucked guitar, ambient pads, and gentle retro. Songs play in order, then repeat. Music and effects can be muted separately.</p><span id="audio-status" role="status"></span></div></details>
   <section class="intro"><div class="eyebrow">A LITTLE CLIMB, A LITTLE JOY</div><h1>One hop closer<br>to the clouds.</h1><p>Find your match. Follow your curiosity.</p></section>
   <section class="game" aria-label="Tile Hop game">
     <div class="game-top"><div><span class="eyebrow" id="chapter">THE CLOVER GARDEN</span><h2 id="level-title">First little steps</h2></div><div class="game-actions"><button id="levels" class="level-pill" aria-label="Choose level">01 / 12</button><button id="fullscreen" class="level-pill" aria-label="Enter fullscreen" aria-pressed="false">⛶ <span>Full screen</span></button></div></div>
@@ -22,9 +22,8 @@
     <div class="playfield" id="playfield"><div class="cloud cloud-one"></div><div class="cloud cloud-two"></div><div id="board" class="board"></div><div id="rabbit" class="rabbit" aria-hidden="true"></div><div class="ground"><span>✿</span><span>✿</span><span>✿</span></div></div>
     <div class="instruction"><div id="match" class="match-symbol"></div><div><strong id="prompt">Find a matching tile</strong><span id="subprompt">The little symbol shows your next match.</span></div><div id="keys" class="key-inventory" hidden></div><div class="star-count" aria-label="Stars collected">✦ <span id="stars">0</span></div></div>
     <div class="controls"><button id="undo">↶ <span>Undo</span></button><button id="restart">↻ <span>Restart</span></button><button id="hint">☀ <span>Hint</span></button></div>
-    <div class="game-tools"><button id="stats">▤ Show stats</button><button id="reset-game">Restart entire game…</button></div>
   </section>
-  <footer><span>No rush. Just a little adventure.</span><button id="help">How to play ↗</button></footer>
+  <footer><span>No rush. Just a little adventure.</span><div class="footer-options"><button id="options">⚙ Options</button><button id="help">How to play ↗</button></div></footer>
 </main>
 <dialog id="dialog"><div id="dialog-content"></div></dialog>
 <dialog id="lesson-dialog" aria-label="Learn a new garden mechanic"><div id="lesson-content"></div></dialog>

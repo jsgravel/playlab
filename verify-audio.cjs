@@ -15,7 +15,7 @@ vm.createContext(context);vm.runInContext(fs.readFileSync('audio.js','utf8'),con
 const flush=async()=>{for(let i=0;i<8;i++)await Promise.resolve();};
 (async()=>{
  assert.equal(contextCount,0,'No autoplay or AudioContext before interaction');
- assert.equal(context.window.TileHopAudio.tracks.length,8);
+ assert.equal(context.window.TileHopAudio.tracks.length,12);
  const music=document.getElementById('music'),effects=document.getElementById('sound');
  music.onclick();await flush();assert.equal(intervals.size,1);assert.ok(notes.length>0);assert.equal(effects.attributes['aria-pressed'],'false');
  const before=notes.length;await context.window.TileHopAudio.effect(440,.1);assert.equal(notes.length,before,'Effects stay muted while music plays');
@@ -31,11 +31,18 @@ const flush=async()=>{for(let i=0;i<8;i++)await Promise.resolve();};
  document.getElementById('effects-volume').value='30';document.getElementById('effects-volume').oninput();assert.equal(audioContext.gains[1].gain.value,.3);assert.equal(JSON.parse(stored).effectsVolume,.3);
  document.getElementById('music-volume').value='20';document.getElementById('music-volume').oninput();assert.equal(audioContext.gains[0].gain.value,.2);assert.equal(audioContext.gains[1].gain.value,.3);
  document.getElementById('next-song').onclick();await flush();assert.equal(intervals.size,1,'Changing songs must not stack schedulers');assert.equal(JSON.parse(stored).track,1);
+ // Distinct instruments must create distinct harmonic and waveform arrangements.
+ const arrangements=new Set();
+ for(let track=8;track<12;track++){
+  const start=notes.length;document.getElementById('song').value=String(track);document.getElementById('song').onchange();await flush();
+  arrangements.add(notes.slice(start).map(n=>n.type+':'+n.frequency.value.toFixed(2)).join(','));
+ }
+ assert.equal(arrangements.size,4,'Piano, guitar, ambient and retro arrangements differ');
  // Exercise scheduling across every track and the automatic playlist wrap.
- for(let track=0;track<8;track++){
+ for(let track=0;track<12;track++){
   const previous=JSON.parse(stored).track;
   for(let i=0;i<1800&&JSON.parse(stored).track===previous;i++){audioContext.currentTime+=.1;for(const schedule of intervals)schedule();}
-  assert.equal(JSON.parse(stored).track,(previous+1)%8,'Playlist advances automatically, including wrap');
+  assert.equal(JSON.parse(stored).track,(previous+1)%12,'Playlist advances automatically, including wrap');
   assert.equal(intervals.size,1);
  }
  music.onclick();await flush();assert.equal(intervals.size,0);assert.equal(effects.attributes['aria-pressed'],'true');
@@ -49,5 +56,5 @@ const flush=async()=>{for(let i=0;i<8;i++)await Promise.resolve();};
  audioContext.resume=()=>new Promise(resolve=>{resolveResume=()=>{audioContext.state='running';resolve();};});
  effects.onclick();effects.onclick();const beforeResume=notes.length;resolveResume();await flush();
  assert.equal(effects.attributes['aria-pressed'],'false');assert.equal(audioContext.gains[1].gain.value,0);assert.equal(notes.length,beforeResume,'No stale preview plays after mute');
- console.log('PASS: 8 songs; independent volume and mute buses, effects off/on, delayed-resume race, playlist cycling, and background pause.');
+ console.log('PASS: 12 songs; independent volume and mute buses, effects off/on, delayed-resume race, playlist cycling, and background pause.');
 })().catch(error=>{console.error(error);process.exitCode=1;});
