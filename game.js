@@ -54,37 +54,50 @@ function makeLevel(index) {
 }
 function makeAdvancedLevel(index){
  const garden=Math.floor(index/12),local=index%12,rng=random(427+index*173);
- const rows=garden===1?5:garden===2?5+Number(local>=6):garden===3?6:6+Number(local>=6);
+ const rows=[0,5,8,10,12][garden]+Math.floor(local/4);
  const count=garden<2?3:4,symbols=garden===4?5:4,nodes=[];
  for(let r=0;r<rows;r++)for(let c=0;c<count;c++)nodes.push({id:`${r}-${c}`,r,c,entry:Math.floor(rng()*symbols),next:Math.floor(rng()*symbols),star:false});
  const start={id:'start',r:-1,c:1,entry:index%symbols,next:index%symbols};
- let previous=start,r=0;
+ const backbone=[],pattern=[1,0,1,2,1,2,3,2,1,0,1,2,3,2];let previous=start,r=0;
  while(r<rows){
-  const candidates=nodes.filter(n=>n.r===r&&Math.abs(n.c-previous.c)<=1),n=candidates[Math.floor(rng()*candidates.length)];
+  let target=Math.min(count-1,pattern[(r+local%3)%pattern.length]);if(local%2)target=count-1-target;
+  target=Math.max(previous.c-1,Math.min(previous.c+1,target));const n=nodes.find(t=>t.r===r&&t.c===target);
   n.entry=previous.next;
-  const firstKeyRow=garden===2?(local<6?1:2):garden===3?(local<6?0:3):0;
+  const firstKeyRow=garden===2?2+local%3:garden===3?(local<4?0:3):0;
   if(garden>=2&&r===firstKeyRow)n.key=true;
-  if(garden===4&&r===3)n.key=true;
+  if(garden===4&&r===7)n.key=true;
   if(garden>=2&&r===rows-1)n.lock=garden===4?2:1;
-  if(garden>=3&&r===1)n.spring=true;
-  previous=n;r+=n.spring?2:1;
+  if(garden>=3&&(r===1||r>=5&&(r-1)%4===0)&&r<rows-2)n.spring=true;
+  backbone.push(n);previous=n;r+=n.spring?2:1;
  }
  // Extra branches have genuine consequences, while the authored backbone remains solvable.
  for(const n of nodes){
-  if(garden>=2&&!n.key&&!n.lock&&n.r>1&&rng()<.18)n.lock=garden===4&&n.r>3?2:1;
-  if(garden>=3&&n.r===2&&rng()<.35)n.spring=true;
-  if(n.r>0&&rng()<.25)n.star=true;
+  if(!backbone.includes(n)&&garden>=2&&n.r>4&&rng()<.16)n.lock=garden===4&&n.r>7?2:1;
+  if(!backbone.includes(n)&&garden>=3&&n.r<rows-2&&rng()<.12)n.spring=true;
+  if(n.r>0&&rng()<.14)n.star=true;
  }
- return {nodes,start,rows,count,garden};
+ // Deliberate forks: some merge back, others match now but cannot continue.
+ let forks=0;
+ for(let i=0;i<backbone.length-1;i++){
+  if(i%3!==local%3)continue;
+  const good=backbone[i],prev=i?backbone[i-1]:start,next=backbone[i+1];
+  const branch=nodes.find(t=>t.r===good.r&&t.c!==good.c&&Math.abs(t.c-prev.c)<=1&&Math.abs(t.c-next.c)<=1);
+  if(!branch)continue;branch.entry=good.entry;branch.spring=good.spring;branch.key=false;branch.lock=0;
+  if(!good.key&&(i+local)%2===0){branch.next=good.next;}else{
+   const ahead=nodes.filter(t=>t.r===branch.r+(branch.spring?2:1)&&Math.abs(t.c-branch.c)<=1);
+   branch.next=Array.from({length:symbols},(_,s)=>s).find(s=>ahead.every(t=>t.entry!==s))??good.next;
+  }
+  forks++;
+ }
+ return {nodes,start,rows,count,garden,forks};
 }
 function current(){return path[path.length-1];}
 function reachable(n,t,keys=keyCount()){return t.r===n.r+(n.spring?2:1)&&(level.garden===0||Math.abs(t.c-n.c)<=1)&&(!t.lock||keys>=t.lock);}
 function choices(n,keys=keyCount()){return level.nodes.filter(t=>reachable(n,t,keys)&&t.entry===n.next);}
 function bestRoute(n,keys=keyCount()) {
- if(n.r===level.rows-1)return {score:0,route:[]};
- let best=null;
- for(const t of choices(n,keys)){const rest=bestRoute(t,keys+(t.key?1:0));if(rest){const score=rest.score+(t.star?1:0);if(!best||score>best.score)best={score,route:[t,...rest.route]};}}
- return best;
+ const memo=new Map();
+ function visit(tile,k){const id=tile.id+':'+k;if(memo.has(id))return memo.get(id);if(tile.r===level.rows-1)return {score:0,route:[]};let best=null;for(const t of choices(tile,k)){const rest=visit(t,k+(t.key?1:0));if(rest){const score=rest.score+(t.star?1:0);if(!best||score>best.score)best={score,route:[t,...rest.route]};}}memo.set(id,best);return best;}
+ return visit(n,keys);
 }
 function symbolHTML(s,cls='symbol'){return `<span class="${cls}" style="color:${COLORS[s]}">${SYMBOLS[s]}</span>`;}
 function mechanicIcon(kind){const drawing=kind==='key'?'<circle cx="7" cy="8" r="4"/><path d="m10 11 9 9m-4-4 3-3m-6 0 3-3"/>':`<rect x="5" y="10" width="14" height="11" rx="3"/><path d="${kind==='open'?'M9 10V6a4 4 0 0 1 8 0':'M8 10V6a4 4 0 0 1 8 0v4'}"/><circle cx="12" cy="15" r="1"/>`;return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${drawing}</svg>`;}

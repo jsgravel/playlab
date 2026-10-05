@@ -14,6 +14,8 @@ function finish(index){
  assert.equal(api.load(index),true);
  const state=api.getState(),route=api.bestRoute(state.level.start);
  assert.ok(route,`Level ${index+1} is solvable`);
+ if(index>=12)assert.ok(state.level.forks>0,'Every later puzzle has a deliberately placed fork');
+ if(index>=24)assert.ok(route.route.length>=7,'Later gardens support longer accuracy streaks');
  const tiles=document.getElementById('board').children.filter(n=>n.dataset.id&&state.level.nodes.some(t=>t.id===n.dataset.id&&t.r===state.level.rows-1));
  assert.ok(tiles.every(t=>!t.innerHTML.includes('class="next"')),'No next-symbol previews on finish tiles');
  let keys=0;
