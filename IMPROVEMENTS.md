@@ -6,7 +6,7 @@ Implement and verify each stage before proceeding; preserve saved progress throu
 - [x] Replace key/gate glyphs with clear icons and a visible key inventory.
 - [x] Add themed destinations and arrival feedback.
 - [x] Replace tiny garden tabs with named progression cards.
-- [ ] Compact phone layout and keep long climbs inside a scrollable play window.
+- [x] Compact phone layout and keep long climbs inside a scrollable play window.
 - [ ] Add longer, designed route choices with verified increasing difficulty.
 - [ ] Add untimed combos in later gardens, visual escalation, saved best streak, and a tutorial.
 
