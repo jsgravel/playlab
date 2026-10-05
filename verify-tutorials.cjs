@@ -9,12 +9,12 @@ let acknowledgements=0;const sounds=[];
 for(let g=0;g<5;g++){
  context.window.TileHopLessons.show(g,{bunny:'<svg></svg>',onDone(){acknowledgements++;},onSound:n=>sounds.push(n)});
  assert.ok(document.getElementById('lesson-dialog').open);flush();
- for(let page=0;page<(g===4?2:1);page++){
+ for(let page=0;page<context.window.TileHopLessons.groups[g].length;page++){
   document.getElementById('lesson-try').onclick();assert.equal(timers.size,0,'Manual mode cancels autoplay');
-  const count=g===4&&page===1?3:2;
+  const lesson=context.window.TileHopLessons.groups[g][page],count=['twoKeys','combo'].includes(lesson)?3:2;
   for(let i=1;i<=count;i++)buttons.find(b=>Number(b.dataset.example)===i).onclick();
   const finalTip=document.getElementById('lesson-tip').textContent;
-  if(g===2)assert.match(finalTip,/gate opens/);if(g===3)assert.match(finalTip,/bigger hop/);if(g===4&&page===1)assert.match(finalTip,/Both keys/);
+  if(lesson==='key')assert.match(finalTip,/gate opens/);if(lesson==='spring')assert.match(finalTip,/bigger hop/);if(lesson==='twoKeys')assert.match(finalTip,/Both keys/);if(lesson==='combo')assert.match(finalTip,/3× combo/);
   document.getElementById('lesson-next').onclick();
  }
  assert.equal(document.getElementById('lesson-dialog').open,false);assert.equal(timers.size,0);

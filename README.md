@@ -14,6 +14,12 @@ Each garden has 12 climbs. Finish every climb in a garden to unlock the next; un
 
 Rules appear above each puzzle. Undo reverses key collection and spring position. Hints evaluate reach, keys, and spring hops to find a complete route. Stars remain optional discoveries, not a completion requirement.
 
+Later puzzles now use designed column patterns, merging forks, false leads, key detours, and spring shortcuts. Willow levels have 5–7 rows, Lantern Orchard 8–10, Cloud Springs 10–12, and Starlight Sanctuary 12–14. A bounded play window follows the rabbit; swipe inside it to inspect the full route. Completed levels, garden unlocks, and statistics remain saved when the layouts update.
+
+From Lantern Orchard onward, correct hops grow an **untimed combo**. At 3, 6, and 10 hops the counter, rabbit glow, landing ring, and sparkles become richer. Wrong matches, blocked gates, undo, restart, and changing levels reset the active streak. Waiting and hints do not. The best combo saves in Show stats and clears with a full-game reset. New and returning players receive a combo tutorial.
+
+Spring jumps fade the skipped row and outline the landing row without revealing the correct match. Keys and padlocks use clear SVG icons; the key inventory stays beside the matching prompt. Each garden has a destination, and the garden trail has named cards with completion meters and unlock requirements.
+
 The first time you enter a garden, a short animated rabbit example introduces its rules. Watch, replay, or try the example without changing your puzzle progress. Acknowledgements are saved, and How to play lets you review the current garden's example. Starlight has separate examples for the sun symbol and two-key gates. Mechanic sound cues distinguish collecting keys, opening/blocked gates, preparing/using springs, stars, and milestone celebrations; all use the effects mute and volume controls.
 
 Run `node verify.cjs`, `node verify-audio.cjs`, `node verify-tutorials.cjs`, and `node verify-fullscreen.cjs` for dependency-free checks of puzzles, progression, tutorials, audio, and fullscreen.

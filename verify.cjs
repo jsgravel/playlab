@@ -72,5 +72,26 @@ tracking.document.getElementById('reset-game').onclick();assert.match(tracking.d
 tracking.document.getElementById('reset-game').onclick();tracking.document.getElementById('confirm-reset').onclick();assert.equal(tracking.api.getState().levelIndex,0);assert.equal(Object.keys(tracking.storage().records).length,0);assert.equal(tracking.storage().stats.undoUses,0);assert.equal(tracking.storage().stats.restarts,0);assert.equal(Object.keys(tracking.storage().stats.flawless).length,0);assert.equal(tracking.api.unlockedGarden(1),false);
 const pending=boot();for(const tile of pending.api.bestRoute(pending.api.getState().level.start).route)pending.context.hop(tile);pending.document.getElementById('reset-game').onclick();pending.flush();assert.match(pending.document.getElementById('dialog-content').innerHTML,/Restart the entire game/,'Pending finish cannot replace the reset warning');
 assert.equal(Object.keys(migrated.storage().stats.flawless).length,0,'Old saves keep progress without invented historical flawless stats');
+const unlockedRecords=Object.fromEntries(Array.from({length:48},(_,i)=>[i,0]));
+const streak=boot({level:24,records:unlockedRecords,comboSeen:true,tutorialsSeen:{2:true}});
+let streakRoute=streak.api.bestRoute(streak.api.getState().level.start).route;
+for(const tile of streakRoute.slice(0,3))streak.context.hop(tile);
+assert.equal(streak.api.getState().combo,3);assert.equal(streak.document.getElementById('combo-bar').dataset.tier,'bud');
+streak.document.getElementById('hint').onclick();assert.equal(streak.api.getState().combo,3,'Hints never break a combo');streak.flush();assert.equal(streak.api.getState().combo,3,'Waiting never breaks a combo');
+streak.document.getElementById('undo').onclick();assert.equal(streak.api.getState().combo,0);assert.equal(streak.storage().stats.bestCombo,3);
+streak.api.load(24);streakRoute=streak.api.bestRoute(streak.api.getState().level.start).route;
+let wrongStreak;
+for(const tile of streakRoute){streak.context.hop(tile);wrongStreak=vm.runInContext('level.nodes.find(t=>reachable(current(),t)&&t.entry!==current().next)',streak.context);if(wrongStreak)break;}
+assert.ok(wrongStreak);streak.context.hop(wrongStreak);assert.equal(streak.api.getState().combo,0,'A wrong match resets the streak immediately');
+streak.api.load(59);const finalRoute=vm.runInContext(`(function longest(n,k=0){if(n.r===level.rows-1)return [];let best=null;for(const t of choices(n,k)){const rest=longest(t,k+(t.key?1:0));if(rest&&(!best||rest.length+1>best.length))best=[t,...rest];}return best;})(level.start)`,streak.context);
+assert.ok(finalRoute.length>=10,'Final garden supports the strongest visual tier');
+for(const tile of finalRoute)streak.context.hop(tile);
+assert.equal(streak.document.getElementById('combo-bar').dataset.tier,'starlight');assert.ok(streak.storage().stats.bestCombo>=10);
+streak.document.getElementById('restart').onclick();assert.equal(streak.api.getState().combo,0,'Restart resets a combo');const savedBest=streak.storage().stats.bestCombo;assert.equal(boot(streak.storage()).storage().stats.bestCombo,savedBest);
+streak.api.load(0);streak.context.hop(streak.api.bestRoute(streak.api.getState().level.start).route[0]);assert.equal(streak.api.getState().combo,0);assert.equal(streak.document.getElementById('combo-bar').hidden,true,'Combos are introduced only in later gardens');
+// Small phones retain every reachable spring target above the rabbit inside the play window.
+streak.context.window.innerWidth=375;streak.context.window.innerHeight=667;streak.api.load(36);
+for(const tile of streak.api.bestRoute(streak.api.getState().level.start).route){streak.context.hop(tile);const target=vm.runInContext('choices(current())[0]',streak.context);if(target){const y=vm.runInContext(`position(level.nodes.find(t=>t.id==='${target.id}')).y`,streak.context)-streak.document.getElementById('playfield').scrollTop;assert.ok(y>=28&&y<=parseInt(streak.document.getElementById('playfield').style.height)-28,'Reachable targets remain visible after camera follow');}}
 console.log('PASS: all 60 levels with rapid consecutive taps; cancelled finishes, garden locks, keys, springs, undo, saved progress, and celebrations.');
 console.log('PASS: persistent undo/restart stats, distinct flawless clears, error tracking, replay, reload, reset confirmation/cancel, and pending-finish safety.');
+console.log('PASS: designed forks, longer routes, combo tiers/reset/persistence, untimed hints, and small-phone spring visibility.');

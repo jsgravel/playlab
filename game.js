@@ -21,9 +21,12 @@ let tutorialsSeen=saved.tutorialsSeen&&typeof saved.tutorialsSeen==='object'?sav
 function validCount(value){return Number.isSafeInteger(value)&&value>=0?value:0;}
 function levelFlags(value){return Object.fromEntries(Object.entries(value&&typeof value==='object'?value:{}).filter(([key,v])=>Number.isInteger(Number(key))&&Number(key)>=0&&Number(key)<TOTAL_LEVELS&&v===true));}
 const storedStats=saved.stats&&typeof saved.stats==='object'?saved.stats:{};
-let stats={undoUses:validCount(storedStats.undoUses),restarts:validCount(storedStats.restarts),flawless:levelFlags(storedStats.flawless),dirty:levelFlags(storedStats.dirty)};
-function markError(){stats.dirty[levelIndex]=true;persist();}
+let stats={undoUses:validCount(storedStats.undoUses),restarts:validCount(storedStats.restarts),bestCombo:validCount(storedStats.bestCombo),flawless:levelFlags(storedStats.flawless),dirty:levelFlags(storedStats.dirty)};
+let combo=0,comboSeen=saved.comboSeen===true;
+function markError(){stats.dirty[levelIndex]=true;combo=0;updateCombo();persist();}
 let level, path, animationTimer, feedbackTimer;
+function updateCombo(){if(!level)return;const active=level.garden>=2,tier=combo>=10?'starlight':combo>=6?'bloom':combo>=3?'bud':'seed';$('combo-bar').hidden=!active;$('combo-count').textContent=combo+'×';$('combo-label').textContent=combo>=10?'Starlight flow':combo>=6?'In full bloom':combo>=3?'Finding your rhythm':combo?'A lovely start':'A fresh little streak';$('combo-bar').dataset.tier=tier;$('playfield').dataset.combo=active?tier:'seed';}
+function comboSparkles(){if(combo<3)return;const count=combo>=10?8:combo>=6?4:2,p=position(current());for(let i=0;i<count;i++){const s=document.createElement('span');s.className='combo-spark';s.textContent=combo>=10?'✦':'✧';s.style.left=`calc(${p.x}% + ${(i-count/2)*11}px)`;s.style.top=(p.y-35)+'px';$('playfield').append(s);setTimeout(()=>s.remove(),650);}}
 function completed(index){return Object.hasOwn(records,index);}
 function gardenComplete(g){return Array.from({length:12},(_,i)=>completed(g*12+i)).every(Boolean);}
 function unlockedGarden(g){return g===0||Array.from({length:g},(_,i)=>gardenComplete(i)).every(Boolean);}
@@ -81,7 +84,7 @@ function makeAdvancedLevel(index){
  for(let i=0;i<backbone.length-1;i++){
   if(i%3!==local%3)continue;
   const good=backbone[i],prev=i?backbone[i-1]:start,next=backbone[i+1];
-  const branch=nodes.find(t=>t.r===good.r&&t.c!==good.c&&Math.abs(t.c-prev.c)<=1&&Math.abs(t.c-next.c)<=1);
+  const branch=nodes.find(t=>t.r===good.r&&t.c!==good.c&&Math.abs(t.c-prev.c)<=1&&Math.abs(t.c-next.c)<=1)||nodes.find(t=>t.r===good.r&&t.c!==good.c&&Math.abs(t.c-prev.c)<=1);
   if(!branch)continue;branch.entry=good.entry;branch.spring=good.spring;branch.key=false;branch.lock=0;
   if(!good.key&&(i+local)%2===0){branch.next=good.next;}else{
    const ahead=nodes.filter(t=>t.r===branch.r+(branch.spring?2:1)&&Math.abs(t.c-branch.c)<=1);
@@ -102,12 +105,12 @@ function bestRoute(n,keys=keyCount()) {
 function symbolHTML(s,cls='symbol'){return `<span class="${cls}" style="color:${COLORS[s]}">${SYMBOLS[s]}</span>`;}
 function mechanicIcon(kind){const drawing=kind==='key'?'<circle cx="7" cy="8" r="4"/><path d="m10 11 9 9m-4-4 3-3m-6 0 3-3"/>':`<rect x="5" y="10" width="14" height="11" rx="3"/><path d="${kind==='open'?'M9 10V6a4 4 0 0 1 8 0':'M8 10V6a4 4 0 0 1 8 0v4'}"/><circle cx="12" cy="15" r="1"/>`;return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${drawing}</svg>`;}
 function boardHeight(){return level.rows*80+115;}
-function playWindowHeight(){const immersive=document.body?.classList?.contains?.('immersive'),phone=(window.innerWidth||800)<600;return Math.min(boardHeight(),Math.max(280,Math.min(460,(window.innerHeight||800)-(immersive?230:phone?360:300))));}
+function playWindowHeight(){const immersive=document.body?.classList?.contains?.('immersive'),phone=(window.innerWidth||800)<600;return Math.min(boardHeight(),Math.max(280,Math.min(460,(window.innerHeight||800)-(immersive?230:phone?360:300)-(level.garden>=2?42:0))));}
 function followRabbit(){const p=position(current()),height=playWindowHeight();$('playfield').scrollTop=Math.max(0,Math.min(boardHeight()-height,p.y-height+80));}
 function position(n){return {x:n.r<0&&level.garden===0?50:(n.c+1)*100/(level.count+1),y:boardHeight()-40-(n.r+1)*80};}
 const bunny = '<svg viewBox="0 0 50 60" aria-hidden="true"><ellipse cx="18" cy="17" rx="5" ry="15" fill="#fff9e9" stroke="#bcbfa6"/><ellipse cx="32" cy="15" rx="5" ry="15" fill="#fff9e9" stroke="#bcbfa6"/><path d="M18 7v15M32 5v15" stroke="#e4b5a2" stroke-width="3" stroke-linecap="round"/><ellipse cx="25" cy="43" rx="16" ry="15" fill="#fff9e9" stroke="#bcbfa6"/><ellipse cx="25" cy="31" rx="17" ry="14" fill="#fff9e9" stroke="#bcbfa6"/><circle cx="19" cy="30" r="1.6" fill="#3f5946"/><circle cx="31" cy="30" r="1.6" fill="#3f5946"/><path d="m23 34 2 2 2-2" fill="#cf9686"/><circle cx="15" cy="35" r="3" fill="#edc8af"/><circle cx="35" cy="35" r="3" fill="#edc8af"/><ellipse cx="16" cy="55" rx="7" ry="3" fill="#fff9e9"/><ellipse cx="34" cy="55" rx="7" ry="3" fill="#fff9e9"/></svg>';
-function load(index){if(!Number.isInteger(index)||index<0||index>=TOTAL_LEVELS||!unlockedGarden(Math.floor(index/12)))return false;clearTimeout(animationTimer);clearTimeout(feedbackTimer);levelIndex=index;level=makeLevel(index);path=[level.start];$('rabbit').innerHTML=bunny;$('rabbit').classList.remove('hopping');render();persist();if(!tutorialsSeen[level.garden])showLesson();return true;}
-function showLesson(){const g=level.garden;window.TileHopLessons?.show(g,{bunny,icon:mechanicIcon,onSound:cue,onDone:()=>{tutorialsSeen[g]=true;persist();}});}
+function load(index){if(!Number.isInteger(index)||index<0||index>=TOTAL_LEVELS||!unlockedGarden(Math.floor(index/12)))return false;clearTimeout(animationTimer);clearTimeout(feedbackTimer);levelIndex=index;level=makeLevel(index);path=[level.start];combo=0;$('rabbit').innerHTML=bunny;$('rabbit').classList.remove('hopping');render();persist();if(!tutorialsSeen[level.garden]||level.garden>=2&&!comboSeen)showLesson();return true;}
+function showLesson(){const g=level.garden;window.TileHopLessons?.show(g,{bunny,icon:mechanicIcon,onSound:cue,onDone:()=>{tutorialsSeen[g]=true;if(g>=2)comboSeen=true;persist();}});}
 function render(){
  const garden=GARDENS[level.garden];
  $('level-title').textContent=title(levelIndex);$('chapter').textContent=`${level.garden+1} / ${GARDENS.length} · ${garden.name.toUpperCase()}`;$('levels').textContent=`${String(levelIndex%12+1).padStart(2,'0')} / 12`;
@@ -139,6 +142,7 @@ function render(){
  $('prompt').textContent=finished?'You made it to the top!':stuck?'A little detour!':path.length===1&&levelIndex===0?'Tap a flower to hop':'Find a '+SYMBOL_NAMES[n.next];
  $('subprompt').textContent=finished?'Enjoy the view. Your climb is complete.':stuck?'Undo a hop and try another path.':n.spring?'Spring hop! Match two rows above.':level.garden>=2?`⚿ ${keyCount()} ${keyCount()===1?'key':'keys'} collected · ▣ gates need keys.`:level.garden===1?'Stay nearby: at most one column sideways.':'Small symbol = your next match. ✦ = bonus star.';
  followRabbit();
+ updateCombo();
 }
 function hop(tile){
  const n=current();if(tile.r!==n.r+(n.spring?2:1)||level.garden>0&&Math.abs(tile.c-n.c)>1)return;
@@ -146,7 +150,7 @@ function hop(tile){
  if(tile.entry!==n.next){markError();const b=document.querySelector(`[data-id="${tile.id}"]`);b.classList.remove('wrong');void b.offsetWidth;b.classList.add('wrong');$('prompt').textContent='Look for the same symbol';clearTimeout(feedbackTimer);feedbackTimer=setTimeout(render,1100);tone(160,.08);return;}
  clearTimeout(feedbackTimer);clearTimeout(animationTimer);
  // Commit the move immediately. Animation is decoration, never an input lock.
- path.push(tile);render();const rabbit=$('rabbit');rabbit.classList.remove('hopping');void rabbit.offsetWidth;rabbit.classList.add('hopping');
+ path.push(tile);if(level.garden>=2){combo++;stats.bestCombo=Math.max(stats.bestCombo,combo);persist();}render();const rabbit=$('rabbit');rabbit.classList.remove('hopping');void rabbit.offsetWidth;rabbit.classList.add('hopping');comboSparkles();
  if(n.spring)cue('spring');else if(tile.lock)cue('unlock');else if(tile.key)cue('key');else if(tile.spring)cue('springReady');else if(tile.entry===4)cue('sun');else if(level.garden===1)cue('nearby');else tone(420+tile.r*65,.12);
  if(tile.key&&(n.spring||tile.lock))cue('key');if(tile.lock&&n.spring)cue('unlock');if(tile.star&&!tile.key&&!tile.lock)cue('star');
  $('announcement').textContent=`Row ${tile.r+1} of ${level.rows}. ${tile.key?'Key collected. ':''}${tile.star?'Star collected.':''}`;
@@ -154,7 +158,7 @@ function hop(tile){
  if(tile.r===level.rows-1)animationTimer=setTimeout(win,180);
 }
 function celebrate(){for(let i=0;i<8;i++){const s=document.createElement('span');s.className='confetti';s.textContent='✦';s.style.left=(25+Math.random()*50)+'%';s.style.top=(($('playfield').scrollTop||0)+60+Math.random()*150)+'px';$('playfield').append(s);setTimeout(()=>s.remove(),1100);}}
-function persist(){try{localStorage.setItem('tilehop-v1',JSON.stringify({level:levelIndex,records,tutorialsSeen,stats}));}catch(_){}}
+function persist(){try{localStorage.setItem('tilehop-v1',JSON.stringify({level:levelIndex,records,tutorialsSeen,comboSeen,stats}));}catch(_){}}
 function modal(html){$('dialog-content').innerHTML=html;if(!$('dialog').open)$('dialog').showModal();}
 function close(){ $('dialog').close(); }
 function win(){
@@ -193,7 +197,7 @@ function finishPendingClimb(){if(animationTimer&&current().r===level.rows-1){cle
 function showStats(){
  finishPendingClimb();
  const cleared=Array.from({length:TOTAL_LEVELS},(_,i)=>completed(i)).filter(Boolean).length;
- modal(`<div class="eyebrow">YOUR LITTLE ADVENTURE</div><h2>Your stats.</h2><div class="stats-grid"><div><strong>${stats.undoUses}</strong><span>Undo uses</span></div><div><strong>${stats.restarts}</strong><span>Level restarts</span></div><div><strong>${Object.keys(stats.flawless).length}</strong><span>Flawless levels</span></div><div><strong>${cleared} / ${TOTAL_LEVELS}</strong><span>Levels completed</span></div></div><p>A flawless level is a climb completed without a wrong match, blocked-gate tap, undo, or restart. Each level counts once; a clean replay can earn its flawless mark.</p><p>Hints are welcome and do not count as mistakes. These stats started tracking with this update; earlier clears keep their progress, but have no recorded flawless result.</p><button class="secondary" id="reset-from-stats">Restart entire game…</button><button class="primary" id="close">Back to the garden</button>`);
+ modal(`<div class="eyebrow">YOUR LITTLE ADVENTURE</div><h2>Your stats.</h2><div class="stats-grid"><div><strong>${stats.undoUses}</strong><span>Undo uses</span></div><div><strong>${stats.restarts}</strong><span>Level restarts</span></div><div><strong>${Object.keys(stats.flawless).length}</strong><span>Flawless levels</span></div><div><strong>${cleared} / ${TOTAL_LEVELS}</strong><span>Levels completed</span></div><div><strong>${stats.bestCombo}×</strong><span>Best combo · Lantern Orchard onward</span></div></div><p>A flawless level is a climb completed without a wrong match, blocked-gate tap, undo, or restart. Each level counts once; a clean replay can earn its flawless mark.</p><p>Hints are welcome and do not count as mistakes. These stats started tracking with this update; earlier clears keep their progress, but have no recorded flawless result.</p><button class="secondary" id="reset-from-stats">Restart entire game…</button><button class="primary" id="close">Back to the garden</button>`);
  $('reset-from-stats').onclick=warnReset;$('close').onclick=close;
 }
 function warnReset(){
@@ -201,7 +205,7 @@ function warnReset(){
  modal('<div class="big-icon">↻</div><div class="eyebrow">START A BRAND-NEW ADVENTURE?</div><h2>Restart the entire game?</h2><p>This will erase <strong>all completed levels, unlocked gardens, collected star records, tutorial acknowledgements, and statistics</strong> saved in this browser.</p><p><strong>This cannot be undone.</strong> You’ll return to level 1 in Clover Garden. Your music and effects preferences will stay.</p><button class="primary" id="cancel-reset" autofocus>Keep my progress</button><button class="danger" id="confirm-reset">Yes, erase progress and restart</button>');
  $('cancel-reset').onclick=close;$('confirm-reset').onclick=()=>{
   clearTimeout(animationTimer);clearTimeout(feedbackTimer);window.TileHopLessons?.cleanup();$('lesson-dialog').close();close();
-  records={};tutorialsSeen={};stats={undoUses:0,restarts:0,flawless:{},dirty:{}};load(0);$('announcement').textContent='Game restarted. Welcome back to Clover Garden.';
+  records={};tutorialsSeen={};comboSeen=false;stats={undoUses:0,restarts:0,bestCombo:0,flawless:{},dirty:{}};load(0);$('announcement').textContent='Game restarted. Welcome back to Clover Garden.';
  };
  $('cancel-reset').focus?.({preventScroll:true});
 }
@@ -214,4 +218,4 @@ if(!unlockedGarden(Math.floor(levelIndex/12)))levelIndex=firstUnfinished(0);
 load(levelIndex);
 window.addEventListener?.('resize',()=>render());
 // Pure generation and solver helpers are exposed for lightweight offline checks.
-window.TileHop={makeLevel,getState:()=>({levelIndex,level,path:[...path],records:{...records}}),bestRoute,load,completed,gardenComplete,unlockedGarden,showLevels};
+window.TileHop={makeLevel,getState:()=>({levelIndex,level,path:[...path],combo,records:{...records}}),bestRoute,load,completed,gardenComplete,unlockedGarden,showLevels};
