@@ -59,3 +59,13 @@ html:has(dialog[open]),body:has(dialog[open]){overflow:hidden}
 #lesson-dialog .lesson-actions button,#lesson-dialog .primary{padding:10px;min-height:44px;margin-top:6px;font-size:11px}
 #lesson-dialog .lesson-note{font-size:9px!important;margin-bottom:0!important}
 @media(max-height:520px) and (min-width:600px){#lesson-dialog{width:min(660px,calc(100% - 24px))}#lesson-content{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px}#lesson-content>.eyebrow,#lesson-content>h2,#lesson-content>p:not(.lesson-tip):not(.lesson-note){grid-column:2}#lesson-dialog .lesson-scene{grid-column:1;grid-row:1/7;height:260px;margin:0}#lesson-content>.lesson-actions,#lesson-content>.primary,#lesson-content>.lesson-tip{grid-column:2}#lesson-dialog .lesson-note{grid-column:1/-1}}
+
+.playfield[data-theme="copper"]{background:linear-gradient(#e6cbb7,#f0e4ca)}.playfield[data-theme="crystal"]{background:linear-gradient(#b7d2df,#ddd4ee)}
+.playfield .tile.copper-gate{border-color:#bb895e;background:#f5e3ce}.playfield .tile.copper-gate .mechanic.has-icon,#lesson-dialog .lesson-copper b{background:#e8c6a2;border-color:#b5794d;color:#795032}
+#dialog[data-view="map"] .garden-tabs.garden-cards{grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin:10px 0}
+#dialog[data-view="map"] .garden-cards button,#dialog[data-view="map"] .garden-cards button:last-child{min-height:60px;padding:5px 3px}
+#dialog[data-view="map"] .garden-cards button>span{font-size:18px}#dialog[data-view="map"] .garden-cards strong{margin:2px 0}#dialog[data-view="map"] .card-meter{margin-top:4px}
+.map-actions{display:flex;gap:8px}.map-actions button{flex:1}
+@media(max-height:600px){#dialog[data-view="map"]{padding:12px}#dialog[data-view="map"] .garden-tabs.garden-cards{margin:7px 0}#dialog[data-view="map"] h2{font-size:23px}#dialog[data-view="map"] .level-grid{gap:5px;margin:8px 0}#dialog[data-view="map"] .level-grid button{min-height:44px}}
+
+.garden-medals{flex-wrap:wrap}@media(max-width:400px){.garden-medals{gap:6px;margin:14px 0}.garden-medals span{width:30px;height:30px;font-size:18px}}

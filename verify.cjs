@@ -23,7 +23,7 @@ function finish(index){
   const current=api.getState().path.at(-1);assert.equal(tile.r,current.r+(current.spring?2:1));
   if(state.level.garden>0)assert.ok(Math.abs(tile.c-current.c)<=1,'Later gardens require nearby hops');
   assert.ok(!tile.lock||keys>=tile.lock,'A route must collect keys before gates');
-  context.hop(tile);assert.equal(api.getState().path.at(-1).id,tile.id,'Moves commit immediately without waiting for animation');if(tile.key)keys++;
+  context.hop(tile);assert.equal(api.getState().path.at(-1).id,tile.id,'Moves commit immediately without waiting for animation');keys+=(tile.key?1:0)-(tile.spend?tile.lock:0);assert.equal(vm.runInContext('keyCount()',context),keys);
  }
  assert.equal(api.getState().path.at(-1).r,state.level.rows-1);app.flush();assert.ok(Object.hasOwn(app.storage().records,index));
  const content=document.getElementById('dialog-content').innerHTML;assert.ok(!/\d+ of \d+ stars/.test(content));document.getElementById('dialog').close();return content;
@@ -31,11 +31,11 @@ function finish(index){
 finish(11);assert.equal(api.unlockedGarden(1),false,'Completing level 12 alone does not unlock garden 2');
 for(let i=0;i<11;i++){const content=finish(i);if(i===10){assert.ok(content.includes('Clover Garden complete!'));assert.ok(content.includes('Willow Walk'));}}
 assert.equal(api.unlockedGarden(1),true);
-for(let i=12;i<60;i++){
+for(let i=12;i<84;i++){
  const content=finish(i),garden=Math.floor(i/12);
- if(i%12===11&&i<59){assert.ok(content.includes('NEW GARDEN UNLOCKED'));assert.equal(api.unlockedGarden(garden+1),true);}
- if(i===59){assert.ok(content.includes('CONGRATULATIONS!'));assert.ok(content.includes('You beat Tile Hop!'));assert.ok(content.includes('60 levels'));}
- if(i%12!==11&&garden<4)assert.equal(api.unlockedGarden(garden+1),false);
+ if(i%12===11&&i<83){assert.ok(content.includes('NEW GARDEN UNLOCKED'));assert.equal(api.unlockedGarden(garden+1),true);}
+ if(i===83){assert.ok(content.includes('CONGRATULATIONS!'));assert.ok(content.includes('You beat Tile Hop!'));assert.ok(content.includes('84 levels'));}
+ if(i%12!==11&&garden<6)assert.equal(api.unlockedGarden(garden+1),false);
  api.load(i);const first=api.bestRoute(api.getState().level.start).route[0];context.hop(first);app.flush();document.getElementById('undo').onclick();assert.equal(api.getState().path.length,1);assert.equal(api.getState().path.filter(t=>t.key).length,0);
 }
 api.load(24);const keyRoute=api.bestRoute(api.getState().level.start).route;
@@ -92,7 +92,7 @@ streak.api.load(0);streak.context.hop(streak.api.bestRoute(streak.api.getState()
 // Small phones retain every reachable spring target above the rabbit inside the play window.
 streak.context.window.innerWidth=375;streak.context.window.innerHeight=667;streak.api.load(36);
 for(const tile of streak.api.bestRoute(streak.api.getState().level.start).route){streak.context.hop(tile);const target=vm.runInContext('choices(current())[0]',streak.context);if(target){const y=vm.runInContext(`position(level.nodes.find(t=>t.id==='${target.id}')).y`,streak.context)-streak.document.getElementById('playfield').scrollTop;assert.ok(y>=28&&y<=parseInt(streak.document.getElementById('playfield').style.height)-28,'Reachable targets remain visible after camera follow');}}
-console.log('PASS: all 60 levels with rapid consecutive taps; cancelled finishes, garden locks, keys, springs, undo, saved progress, and celebrations.');
+console.log('PASS: all 84 levels with rapid consecutive taps; cancelled finishes, garden locks, keys, springs, undo, saved progress, and celebrations.');
 console.log('PASS: persistent undo/restart stats, distinct flawless clears, error tracking, replay, reload, reset confirmation/cancel, and pending-finish safety.');
 console.log('PASS: designed forks, longer routes, combo tiers/reset/persistence, untimed hints, and small-phone spring visibility.');
 
@@ -110,4 +110,39 @@ const count=scrolls.length;vm.runInContext('render()',camera.context);assert.equ
 camera.document.getElementById('undo').onclick();assert.equal(scrolls.at(-1).behavior,'smooth','Undo glides back');
 camera.context.window.matchMedia=()=>({matches:true});camera.context.hop(route[1]);assert.equal(scrolls.at(-1).behavior,'instant','Reduced motion avoids scrolling animation');
 console.log('PASS: smooth camera scheduling, rapid-hop retargeting, stable repaints, undo, initial positioning, and reduced motion.');
+}
+
+{
+ const challenge=boot({records:Object.fromEntries(Array.from({length:60},(_,i)=>[i,0]))});
+ assert.equal(challenge.api.unlockedGarden(5),true,'Old completed saves unlock the new grove');assert.equal(challenge.api.unlockedGarden(6),false);
+ let delayedForks=0;
+ for(let index=60;index<84;index++){
+  if(index===72)for(let i=60;i<72;i++)clearLevel(challenge,i);
+  assert.equal(challenge.api.load(index),true);
+  const level=challenge.api.getState().level,solution=challenge.api.bestRoute(level.start);assert.ok(solution);
+  let previous=level.start,keys=0,forks=0;
+  function exits(n,k){return level.nodes.filter(t=>t.r===n.r+1&&Math.abs(t.c-n.c)<=1&&t.entry===n.next&&(!t.lock||k>=t.lock));}
+  function keyAfter(k,n){return k+(n.key?1:0)-(n.spend?n.lock:0);}
+  function lengthUntilBlocked(n,k){const next=exits(n,k);return next.length?1+Math.max(...next.map(t=>lengthUntilBlocked(t,keyAfter(k,t)))):0;}
+  for(const good of solution.route){
+   const alternatives=exits(previous,keys).filter(t=>t.id!==good.id);
+   for(const bad of alternatives){
+    forks++;const balance=keyAfter(keys,bad);
+    assert.equal(challenge.api.bestRoute(bad,balance),null,'The tempting branch has a real resource consequence');
+    assert.ok(lengthUntilBlocked(bad,balance)>=level.planningDepth-1,'False routes match for several hops before blocking');delayedForks++;
+   }
+   keys=keyAfter(keys,good);previous=good;
+  }
+  assert.equal(forks,level.forks,'Every authored decision is reachable on the solution');
+  assert.equal(keys,0,'The solution budgets keys through the final toll');
+  // Play a toll, undo it, then repay it. Inventory and gate state must agree.
+  const firstToll=solution.route.findIndex(t=>t.spend);
+  for(const tile of solution.route.slice(0,firstToll))challenge.context.hop(tile);
+  const before=vm.runInContext('keyCount()',challenge.context),toll=solution.route[firstToll];
+  challenge.context.hop(toll);assert.equal(vm.runInContext('keyCount()',challenge.context),before-toll.lock);
+  challenge.document.getElementById('undo').onclick();assert.equal(vm.runInContext('keyCount()',challenge.context),before,'Undo refunds spent keys');
+  challenge.context.hop(toll);assert.equal(vm.runInContext('keyCount()',challenge.context),before-toll.lock);
+ }
+ assert.ok(delayedForks>=60,'The expansion adds many actual multi-hop planning decisions');assert.ok(challenge.soundEvents.includes('spend'));
+ console.log('PASS: 24 resource puzzles, delayed-dead-end forks, exact budgets, toll refunds, saved-progress migration, and spending cues.');
 }

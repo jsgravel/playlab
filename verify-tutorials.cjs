@@ -6,12 +6,12 @@ const context={document,window:{},setTimeout(fn){timers.set(++timerId,fn);return
 vm.runInNewContext(fs.readFileSync('tutorials.js','utf8'),context);
 function flush(){while(timers.size){const [id,fn]=timers.entries().next().value;timers.delete(id);fn();}}
 let acknowledgements=0;const sounds=[];
-for(let g=0;g<5;g++){
+for(let g=0;g<7;g++){
  context.window.TileHopLessons.show(g,{bunny:'<svg></svg>',onDone(){acknowledgements++;},onSound:n=>sounds.push(n)});
  assert.ok(document.getElementById('lesson-dialog').open);flush();
  for(let page=0;page<context.window.TileHopLessons.groups[g].length;page++){
   document.getElementById('lesson-try').onclick();assert.equal(timers.size,0,'Manual mode cancels autoplay');
-  const lesson=context.window.TileHopLessons.groups[g][page],count=['twoKeys','combo'].includes(lesson)?3:2;
+  const lesson=context.window.TileHopLessons.groups[g][page],count=['twoKeys','combo','spend','plan'].includes(lesson)?3:2;
   for(let i=1;i<=count;i++)buttons.find(b=>Number(b.dataset.example)===i).onclick();
   const finalTip=document.getElementById('lesson-tip').textContent;
   if(lesson==='key')assert.match(finalTip,/gate opens/);if(lesson==='spring')assert.match(finalTip,/bigger hop/);if(lesson==='twoKeys')assert.match(finalTip,/Both keys/);if(lesson==='combo')assert.match(finalTip,/3× combo/);
@@ -19,6 +19,6 @@ for(let g=0;g<5;g++){
  }
  assert.equal(document.getElementById('lesson-dialog').open,false);assert.equal(timers.size,0);
 }
-assert.equal(acknowledgements,5);assert.ok(sounds.includes('key'));assert.ok(sounds.includes('unlock'));assert.ok(sounds.includes('spring'));
+assert.equal(acknowledgements,7);assert.ok(sounds.includes('key'));assert.ok(sounds.includes('unlock'));assert.ok(sounds.includes('spring'));
 context.window.TileHopLessons.show(3,{bunny:'',onDone(){},onSound(){}});document.getElementById('lesson-dialog').close();assert.equal(timers.size,0,'Closing a lesson cancels its animation callbacks');
 console.log('PASS: all garden demos, manual interaction, two-part finale lesson, sound events, and timer cleanup.');

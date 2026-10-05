@@ -1,6 +1,6 @@
 # Tile Hop
 
-A gentle, mobile-first matching puzzle. Plan ahead using each tile's small next-symbol preview and guide a rabbit up to the clouds. Sixty deterministic puzzles across five gardens, optional stars, hints, undo, original synthesized music, and locally saved progress. Original 12-level saves remain compatible.
+A gentle, mobile-first matching puzzle. Plan ahead using each tile's small next-symbol preview and guide a rabbit up to the clouds. Eighty-four deterministic puzzles across seven gardens, optional stars, hints, undo, original synthesized music, and locally saved progress. Original 12-level saves remain compatible.
 
 ## Garden adventure
 
@@ -48,3 +48,7 @@ The Full screen button sits beside the level selector. Supported browsers use na
 Tap a tile; desktop users can also use Tab and Enter. Every valid tap commits immediately, so consecutive hops never wait for the rabbit animation. Undo reverses a hop, Restart resets the current level, Hint highlights a route toward the top. Undo or restart also cancels pending finish celebrations. The level selector opens the garden trail with completion checks and locked garden previews. Music and effects have independent buttons and start off. Woodland Radio includes twelve original synthesized compositions spanning fantasy flute/harp, soft piano, plucked guitar, ambient pads, and gentle retro, a song selector, next-song button, and separate music/effects volume sliders. Tracks play in order and repeat. Audio preferences are saved locally; returning players must interact before music starts. Audio pauses in background tabs. No external music files or copyrighted game recordings are used. Reduced-motion preferences disable decorative animations.
 
 The garden camera glides upward with each hop and gently follows undo. Rapid taps retarget the glide without locking input; HUD updates do not restart it. New levels establish their starting view immediately, and reduced-motion preferences use immediate camera positioning.
+
+Copper Grove and Crystal Labyrinth add 24 levels after the original 60; existing saved level numbers, completions, and statistics stay compatible. Copper gates show a minus-key badge and **spend** the indicated keys; original gates still only require keys. Undo refunds a toll and removes any key collected on the undone tile. The hint solver accounts for both collection and spending.
+
+The new gardens use authored multi-hop forks instead of immediate dead ends. Both branches can keep matching before merging at a gate, but only one carries enough keys through the tolls. Planning depth increases within each garden; Copper Grove has 10–21 rows and Crystal Labyrinth 18–32 rows. Stars remain optional and do not identify the correct route. Every puzzle is checked for solvability and delayed failure branches; the game stays untimed with free undo and hints. New mechanics receive compact interactive lessons. The garden trail uses two compact rows for all seven gardens.

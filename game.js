@@ -7,10 +7,12 @@ const GARDENS = [
  {name:'Willow Walk',icon:'🍃',theme:'willow',rule:'Willow branches reach only one column sideways. Plan nearby hops.',message:'You found your way through the winding willows!',titles:['A nearby branch','Across the brook','Willow whispers','The winding way','Leaf by leaf','A narrow crossing','Branching thoughts','Bend with the breeze','The quiet bank','Roots and routes','Between the leaves','The willow gate']},
  {name:'Lantern Orchard',icon:'🏮',theme:'lantern',rule:'Collect a key ⚿ before landing on a locked tile ▣. Keys stay with you.',message:'The orchard lanterns are glowing. You opened every garden gate!',titles:['The first little key','An orchard gate','Under the lanterns','Pick your path','A hidden doorway','Golden branches','The keeper’s trail','A key detour','Lantern lanes','Behind the gate','The last orchard key','All lanterns alight']},
  {name:'Cloud Springs',icon:'☁',theme:'cloud',rule:'Land on a spring ↑↑ to jump over the next row. Match two rows above!',message:'You danced over the clouds and brought the springs to life!',titles:['A spring in your step','Above the mist','A gentle lift','Cloud stepping','Over the rainbow','Two rows higher','The floating key','A skyward shortcut','Beyond the drizzle','The cloud crossing','A soft landing','The cloud gateway']},
- {name:'Starlight Sanctuary',icon:'🌙',theme:'starlight',rule:'A fifth symbol, nearby hops, springs, and two-key gates. Take your time.',message:'The sanctuary is shining. Every garden in your adventure is complete!',titles:['The fifth little symbol','Moonlit branches','Two little keys','A starry spring','The patient path','Midnight lanterns','The silver crossing','Constellation climb','A winding wish','The final gateway','Almost among the stars','A home in starlight']}
+ {name:'Starlight Sanctuary',icon:'🌙',theme:'starlight',rule:'A fifth symbol, nearby hops, springs, and two-key gates. Take your time.',message:'The sanctuary is shining. Every garden in your adventure is complete!',titles:['The fifth little symbol','Moonlit branches','Two little keys','A starry spring','The patient path','Midnight lanterns','The silver crossing','Constellation climb','A winding wish','The final gateway','Almost among the stars','A home in starlight']},
+ {name:'Copper Grove',icon:'🍂',theme:'copper',rule:'Copper gates spend keys. Look beyond the next match and save enough for the gate ahead.',message:'You balanced every key and opened the copper grove!',titles:['A key spent wisely','The copper toll','Two tempting branches','Beyond the first gate','A key around the bend','The patient detour','Save one for later','A costly shortcut','Branch by branch','The quiet accountant','Enough for home','The copper crown']},
+ {name:'Crystal Labyrinth',icon:'💎',theme:'crystal',rule:'Longer forks and two-key copper gates. Trace both routes and budget keys before you hop.',message:'Every winding route led you home. You mastered the crystal labyrinth!',titles:['Into the labyrinth','A distant gate','Follow the resources','The long fork','A crystal detour','The second toll','Two keys to spare','Beyond the shimmer','A winding budget','Four little decisions','The deepest branches','The final crystal gate']}
 ];
 const LEVELS_PER_GARDEN=12,TOTAL_LEVELS=GARDENS.length*LEVELS_PER_GARDEN;
-const DESTINATIONS=[{icon:'🏡',name:'The clover treehouse'},{icon:'🌳',name:'The willow lookout'},{icon:'🏮',name:'The lantern pavilion'},{icon:'🪺',name:'The cloud nest'},{icon:'🌙',name:'The starlight home'}];
+const DESTINATIONS=[{icon:'🏡',name:'The clover treehouse'},{icon:'🌳',name:'The willow lookout'},{icon:'🏮',name:'The lantern pavilion'},{icon:'🪺',name:'The cloud nest'},{icon:'🌙',name:'The starlight home'},{icon:'🍁',name:'The copper lodge'},{icon:'💎',name:'The crystal palace'}];
 const NAMES = ['First little steps','A fork in the flowers','Follow the moon','The scenic route','Clover company','A golden detour','Above the treetops','Petal paths','Cloud companions','The long way home','One more little hop','A home in the clouds'];
 const $ = id => document.getElementById(id);
 let saved = {};
@@ -32,11 +34,13 @@ function gardenComplete(g){return Array.from({length:12},(_,i)=>completed(g*12+i
 function unlockedGarden(g){return g===0||Array.from({length:g},(_,i)=>gardenComplete(i)).every(Boolean);}
 function title(index){return index<12?NAMES[index]:GARDENS[Math.floor(index/12)].titles[index%12];}
 function firstUnfinished(g){return Array.from({length:12},(_,i)=>g*12+i).find(i=>!completed(i))??g*12;}
-function keyCount(route=path){return route.filter(n=>n.key).length;}
+function nextKeys(keys,tile){return keys+(tile.key?1:0)-(tile.spend?tile.lock:0);}
+function keyCount(route=path){return route.reduce((keys,tile)=>nextKeys(keys,tile),0);}
 function random(seed) { return () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; }; }
 // Every board includes a complete path. Cross-route choices can require an undo;
 // the hint solver checks the entire remaining route, not just the next match.
 function makeLevel(index) {
+ if(index>=60)return makeChallengeLevel(index);
  if(index>=12)return makeAdvancedLevel(index);
  const rng = random(427 + index * 173), rows = 4 + Math.floor(index / 8), nodes = [];
  const routes = [[], []];
@@ -94,12 +98,59 @@ function makeAdvancedLevel(index){
  }
  return {nodes,start,rows,count,garden,forks};
 }
+// Authored resource forks: both branches keep matching for several hops.
+// Their key budgets differ only deeper in the corridor, before a shared toll.
+function makeChallengeLevel(index){
+ const garden=Math.floor(index/12),local=index%12,rng=random(427+index*173);
+ const modules=garden===5?(local<4?2:3):(local<8?3:4);
+ const depth=(garden===5?3:4)+Math.floor(local/4),gateCost=garden===5?1:2;
+ const rows=modules*(depth+2),count=4,nodes=[];
+ const start={id:'start',r:-1,c:1,entry:index%5,next:index%5};let previous=start;
+ function tile(r,c){let n=nodes.find(t=>t.r===r&&t.c===c);if(!n){n={id:`${r}-${c}`,r,c,entry:Math.floor(rng()*5),next:Math.floor(rng()*5),star:false};nodes.push(n);}return n;}
+ for(let block=0;block<modules;block++){
+  const base=block*(depth+2),mirror=rng()<.5;
+  const good=[],other=[];
+  for(let j=0;j<depth;j++){
+   const edge=j===0||j===depth-1;
+   const a=edge?previous.c+(mirror?1:-1):(mirror?3:0),b=edge?previous.c+(mirror?-1:1):(mirror?0:3);
+   const g=tile(base+j,a),bad=tile(base+j,b);
+   g.entry=j===0?previous.next:good[j-1].next;
+   bad.entry=j===0?previous.next:other[j-1].next;
+   // Separate next symbols where the branches could reach one another.
+   if(j>0&&g.entry===bad.entry){bad.entry=(bad.entry+1)%5;other[j-1].next=bad.entry;}
+   good.push(g);other.push(bad);
+  }
+  const merge=tile(base+depth,previous.c),gate=tile(base+depth+1,rng()<.5?1:2);
+  merge.entry=good.at(-1).next;other.at(-1).next=merge.entry;
+  gate.entry=merge.next;gate.lock=gateCost;gate.spend=true;
+  // First grove puzzles demonstrate spending; later forks hide the replacement
+  // key farther ahead. Both routes otherwise offer the same valid matches.
+  if(garden===5&&local<4){good[0].key=true;other[0].key=true;other[1].lock=1;other[1].spend=true;}
+  else{
+   const initial=gateCost,spend= garden===6&&local>=8?2:1;
+   for(let j=0;j<initial;j++){good[j].key=true;other[j].key=true;}
+   const tollRow=initial;good[tollRow].lock=spend;good[tollRow].spend=true;other[tollRow].lock=spend;other[tollRow].spend=true;
+   for(let j=0;j<spend;j++)good[depth-1-j].key=true;
+   if(spend===2)other[depth-1].key=true;
+  }
+  good.forEach(n=>{if(rng()<.17)n.star=true;});other.forEach(n=>{if(rng()<.3)n.star=true;});
+  previous=gate;
+ }
+ // Fill spare spaces with harmless decoys; they never add a matching exit.
+ for(let r=0;r<rows;r++)for(let c=0;c<count;c++){
+  if(nodes.some(n=>n.r===r&&n.c===c))continue;
+  const incoming=[start,...nodes].filter(n=>n.r===r-1&&Math.abs(n.c-c)<=1).map(n=>n.next);
+  const symbol=[0,1,2,3,4].find(v=>!incoming.includes(v));
+  if(symbol===undefined)continue;const n=tile(r,c);n.entry=symbol;
+ }
+ return {nodes,start,rows,count,garden,forks:modules,planningDepth:depth};
+}
 function current(){return path[path.length-1];}
 function reachable(n,t,keys=keyCount()){return t.r===n.r+(n.spring?2:1)&&(level.garden===0||Math.abs(t.c-n.c)<=1)&&(!t.lock||keys>=t.lock);}
 function choices(n,keys=keyCount()){return level.nodes.filter(t=>reachable(n,t,keys)&&t.entry===n.next);}
 function bestRoute(n,keys=keyCount()) {
  const memo=new Map();
- function visit(tile,k){const id=tile.id+':'+k;if(memo.has(id))return memo.get(id);if(tile.r===level.rows-1)return {score:0,route:[]};let best=null;for(const t of choices(tile,k)){const rest=visit(t,k+(t.key?1:0));if(rest){const score=rest.score+(t.star?1:0);if(!best||score>best.score)best={score,route:[t,...rest.route]};}}memo.set(id,best);return best;}
+ function visit(tile,k){const id=tile.id+':'+k;if(memo.has(id))return memo.get(id);if(tile.r===level.rows-1)return {score:0,route:[]};let best=null;for(const t of choices(tile,k)){const rest=visit(t,nextKeys(k,t));if(rest){const score=rest.score+(t.star?1:0);if(!best||score>best.score)best={score,route:[t,...rest.route]};}}memo.set(id,best);return best;}
  return visit(n,keys);
 }
 function symbolHTML(s,cls='symbol'){return `<span class="${cls}" style="color:${COLORS[s]}">${SYMBOLS[s]}</span>`;}
@@ -127,44 +178,44 @@ function render(smooth=true){
  $('garden-rule').textContent=garden.rule;$('garden-progress').textContent=`${Array.from({length:12},(_,i)=>completed(level.garden*12+i)).filter(Boolean).length} of 12 climbs complete`;
  const n=current(),board=$('board');board.innerHTML='';$('playfield').style.height=playWindowHeight()+'px';board.style.height=boardHeight()+'px';$('playfield').dataset.theme=garden.theme;$('playfield').dataset.columns=String(level.count);
  for(const tile of [level.start,...level.nodes]){
-  const p=position(tile),b=document.createElement('button');b.className='tile'+(tile.r<n.r?' past':'')+(tile.id===n.id?' current':'');b.style.left=p.x+'%';b.style.top=p.y+'px';b.dataset.id=tile.id;
+  const p=position(tile),b=document.createElement('button');b.className='tile'+(tile.spend?' copper-gate':'')+(tile.r<n.r?' past':'')+(tile.id===n.id?' current':'');b.style.left=p.x+'%';b.style.top=p.y+'px';b.dataset.id=tile.id;
   const isFinish=tile.r===level.rows-1;
   if(isFinish)b.classList.add('finish-tile');
   const gateOpened=tile.lock&&path.some(t=>t.id===tile.id);
-  b.innerHTML=symbolHTML(tile.id===n.id&&!isFinish?tile.next:tile.entry)+(tile.id===n.id||isFinish?'':symbolHTML(tile.next,'next'))+(tile.star?'<span class="star">✦</span>':'')+((tile.key||tile.lock||tile.spring)?`<span class="mechanic has-icon">${tile.key?mechanicIcon('key'):''}${tile.lock?mechanicIcon(gateOpened?'open':'lock')+`<small>${tile.lock}</small>`:''}${tile.spring?'↑↑':''}</span>`:'');
+  b.innerHTML=symbolHTML(tile.id===n.id&&!isFinish?tile.next:tile.entry)+(tile.id===n.id||isFinish?'':symbolHTML(tile.next,'next'))+(tile.star?'<span class="star">✦</span>':'')+((tile.key||tile.lock||tile.spring)?`<span class="mechanic has-icon">${tile.key?mechanicIcon('key'):''}${tile.lock?mechanicIcon(gateOpened?'open':'lock')+`<small>${tile.spend?'−':''}${tile.lock}</small>`:''}${tile.spring?'↑↑':''}</span>`:'');
   if(gateOpened&&tile.id===n.id)b.classList.add('gate-opened');
-  b.setAttribute('aria-label',`${SYMBOL_NAMES[tile.entry]} tile${isFinish?', finish':`, next match ${SYMBOL_NAMES[tile.next]}`}${tile.star?', with star':''}${tile.key?', collect a key':''}${tile.lock?`, requires ${tile.lock} keys`:''}${tile.spring?', spring: next jump skips one row':''}`);
+  b.setAttribute('aria-label',`${SYMBOL_NAMES[tile.entry]} tile${isFinish?', finish':`, next match ${SYMBOL_NAMES[tile.next]}`}${tile.star?', with star':''}${tile.key?', collect a key':''}${tile.lock?`, requires ${tile.lock} keys${tile.spend?', spends these keys':''}`:''}${tile.spring?', spring: next jump skips one row':''}`);
   const inRow=tile.r===n.r+(n.spring?2:1),nearby=level.garden===0||Math.abs(tile.c-n.c)<=1;
   b.disabled=!inRow||!nearby;
   if(n.spring&&tile.r===n.r+1)b.classList.add('spring-skipped');
   if(n.spring&&inRow)b.classList.add('spring-landing');
   if(inRow&&!nearby)b.classList.add('out-of-reach');
-  if(tile.lock&&keyCount()<tile.lock)b.classList.add('locked');
+  if(tile.lock&&!gateOpened&&keyCount()<tile.lock)b.classList.add('locked');
   b.onclick=()=>hop(tile);board.append(b);
  }
  const destination=document.createElement('div');destination.className='destination'+(n.r===level.rows-1?' arrived':'');destination.innerHTML=`<span>${DESTINATIONS[level.garden].icon}</span><div><small>${n.r===level.rows-1?'WELCOME HOME':'YOUR LITTLE DESTINATION'}</small><strong>${DESTINATIONS[level.garden].name}</strong></div>`;board.append(destination);
  if(n.spring){const marker=document.createElement('div');marker.className='spring-row-label';marker.textContent='↑↑ LAND TWO ROWS ABOVE';marker.style.top=(position({r:n.r+2,c:0}).y-42)+'px';board.append(marker);}
  const rabbit=$('rabbit'),p=position(n);rabbit.style.left=p.x+'%';rabbit.style.top=(p.y-19)+'px';
  const finished=n.r===level.rows-1;
- $('progress').style.width=((path.length-1)/level.rows*100)+'%';$('match').innerHTML=finished?'✦':symbolHTML(n.next);$('stars').textContent=path.filter(t=>t.star).length;$('undo').disabled=path.length===1;
- $('keys').innerHTML=mechanicIcon('key')+`<strong>${keyCount()}</strong>`;$('keys').hidden=level.garden<2;$('keys').setAttribute('aria-label',`${keyCount()} keys collected`);
+ $('progress').style.width=((n.r+1)/level.rows*100)+'%';$('match').innerHTML=finished?'✦':symbolHTML(n.next);$('stars').textContent=path.filter(t=>t.star).length;$('undo').disabled=path.length===1;
+ $('keys').innerHTML=mechanicIcon('key')+`<strong>${keyCount()}</strong>`;$('keys').hidden=level.garden<2;$('keys').setAttribute('aria-label',`${keyCount()} keys available`);
  const stuck=choices(n).length===0&&n.r<level.rows-1;
  $('prompt').textContent=finished?'You made it to the top!':stuck?'A little detour!':path.length===1&&levelIndex===0?'Tap a flower to hop':'Find a '+SYMBOL_NAMES[n.next];
- $('subprompt').textContent=finished?'Enjoy the view. Your climb is complete.':stuck?'Undo a hop and try another path.':n.spring?'Spring hop! Match two rows above.':level.garden>=2?`⚿ ${keyCount()} ${keyCount()===1?'key':'keys'} collected · ▣ gates need keys.`:level.garden===1?'Stay nearby: at most one column sideways.':'Small symbol = your next match. ✦ = bonus star.';
+ $('subprompt').textContent=finished?'Enjoy the view. Your climb is complete.':stuck?'Undo a hop and try another path.':n.spring?'Spring hop! Match two rows above.':level.garden>=2?`⚿ ${keyCount()} ${keyCount()===1?'key':'keys'} ${level.garden>=5?'available · Copper gates spend keys.':'collected · ▣ gates need keys.'}`:level.garden===1?'Stay nearby: at most one column sideways.':'Small symbol = your next match. ✦ = bonus star.';
  const frame=$('playfield').getBoundingClientRect?.();if(frame&&window.innerHeight){const lower=['.instruction','.controls','.game-tools'].reduce((sum,selector)=>sum+(document.querySelector(selector)?.getBoundingClientRect?.().height||0),0);$('playfield').style.height=Math.min(boardHeight(),Math.max(260,Math.min(460,window.innerHeight-Math.max(0,frame.top)-lower-8)))+'px';}
  followRabbit(smooth);
  updateCombo();
 }
 function hop(tile){
  const n=current();if(tile.r!==n.r+(n.spring?2:1)||level.garden>0&&Math.abs(tile.c-n.c)>1)return;
- if(tile.lock&&keyCount()<tile.lock){markError();$('prompt').textContent=`This gate needs ${tile.lock} ${tile.lock===1?'key':'keys'}`;$('subprompt').textContent='Undo and take a path through a key tile ⚿.';$('announcement').textContent=$('prompt').textContent;cue('locked');return;}
+ if(tile.lock&&keyCount()<tile.lock){markError();$('prompt').textContent=`This gate needs ${tile.lock} ${tile.lock===1?'key':'keys'}`;$('subprompt').textContent=level.garden>=5?'Undo to the fork. Check the keys collected and spent on each route.':'Undo and take a path through a key tile ⚿.';$('announcement').textContent=$('prompt').textContent;cue('locked');return;}
  if(tile.entry!==n.next){markError();const b=document.querySelector(`[data-id="${tile.id}"]`);b.classList.remove('wrong');void b.offsetWidth;b.classList.add('wrong');$('prompt').textContent='Look for the same symbol';clearTimeout(feedbackTimer);feedbackTimer=setTimeout(render,1100);tone(160,.08);return;}
  clearTimeout(feedbackTimer);clearTimeout(animationTimer);
  // Commit the move immediately. Animation is decoration, never an input lock.
  path.push(tile);if(level.garden>=2){combo++;stats.bestCombo=Math.max(stats.bestCombo,combo);persist();}render();const rabbit=$('rabbit');rabbit.classList.remove('hopping');void rabbit.offsetWidth;rabbit.classList.add('hopping');comboSparkles();
- if(n.spring)cue('spring');else if(tile.lock)cue('unlock');else if(tile.key)cue('key');else if(tile.spring)cue('springReady');else if(tile.entry===4)cue('sun');else if(level.garden===1)cue('nearby');else tone(420+tile.r*65,.12);
+ if(n.spring)cue('spring');else if(tile.spend)cue('spend');else if(tile.lock)cue('unlock');else if(tile.key)cue('key');else if(tile.spring)cue('springReady');else if(tile.entry===4)cue('sun');else if(level.garden===1)cue('nearby');else tone(420+tile.r*65,.12);
  if(tile.key&&(n.spring||tile.lock))cue('key');if(tile.lock&&n.spring)cue('unlock');if(tile.star&&!tile.key&&!tile.lock)cue('star');
- $('announcement').textContent=`Row ${tile.r+1} of ${level.rows}. ${tile.key?'Key collected. ':''}${tile.star?'Star collected.':''}`;
+ $('announcement').textContent=`Row ${tile.r+1} of ${level.rows}. ${tile.key?'Key collected. ':''}${tile.spend?`${tile.lock} keys spent. `:''}${tile.star?'Star collected.':''}`;
  if(tile.star||tile.key)celebrate();
  if(tile.r===level.rows-1)animationTimer=setTimeout(win,180);
 }
@@ -190,12 +241,12 @@ function showGardenWin(g){
 }
 function showFinale(){
  cue('finale');
- celebrate();modal(`<div class="finale"><div class="finale-crown">✦ 🌙 ✦</div><div class="eyebrow">EVERY GARDEN. EVERY LITTLE CLIMB.</div><h2>CONGRATULATIONS!</h2><h3>You beat Tile Hop!</h3><p><strong>Starlight Sanctuary complete!</strong> You completed all <strong>60 levels</strong> across <strong>5 gardens</strong>. From your first flower to your final spring, you found a way through every puzzle.</p><div class="garden-medals">${GARDENS.map(g=>`<span title="${g.name}">${g.icon}</span>`).join('')}</div><p>The whole garden is blooming because of you. Take a moment to enjoy it—you earned this view.</p><button class="primary" id="garden-map">Explore your completed gardens</button><button class="secondary" id="close">Enjoy the view</button></div>`);
+ celebrate();modal(`<div class="finale"><div class="finale-crown">✦ 🌙 ✦</div><div class="eyebrow">EVERY GARDEN. EVERY LITTLE CLIMB.</div><h2>CONGRATULATIONS!</h2><h3>You beat Tile Hop!</h3><p><strong>${GARDENS.at(-1).name} complete!</strong> You completed all <strong>${TOTAL_LEVELS} levels</strong> across <strong>${GARDENS.length} gardens</strong>. From your first flower to your final crystal gate, you found a way through every puzzle.</p><div class="garden-medals">${GARDENS.map(g=>`<span title="${g.name}">${g.icon}</span>`).join('')}</div><p>The whole garden is blooming because of you. Take a moment to enjoy it—you earned this view.</p><button class="primary" id="garden-map">Explore your completed gardens</button><button class="secondary" id="close">Enjoy the view</button></div>`);
  $('garden-map').onclick=showLevels;$('close').onclick=close;
 }
 function showLevels(selected=level.garden){
- const g=Number.isInteger(selected)?Math.max(0,Math.min(4,selected)):level.garden,open=unlockedGarden(g),done=Array.from({length:12},(_,i)=>completed(g*12+i)).filter(Boolean).length;
- modal(`<div class="eyebrow">YOUR ADVENTURE · ${Object.keys(records).filter(k=>Number(k)>=0&&Number(k)<TOTAL_LEVELS).length} / 60 CLIMBS</div><h2>The garden trail.</h2>${gardenCards(g)}<h3>${GARDENS[g].name}</h3><p>${open?GARDENS[g].rule:`Complete all 12 climbs in ${GARDENS[g-1].name} to unlock this garden.`}</p>${open?`<div class="map-progress">${done} / 12 complete ${done===12?'· Garden blooming!':''}</div><div class="level-grid">${Array.from({length:12},(_,i)=>{const index=g*12+i;return `<button data-level="${index}" aria-label="${title(index)}${completed(index)?', completed':''}">${String(i+1).padStart(2,'0')}<small>${completed(index)?'✓':'·'}</small></button>`;}).join('')}</div>`:'<div class="locked-garden">▣<p>A new adventure is waiting beyond the gate.</p></div>'}${GARDENS.every((_,i)=>gardenComplete(i))?'<button class="primary" id="finale">Celebrate your adventure ✦</button>':''}<button class="secondary" id="close">Back to the climb</button>`,'map');
+ const g=Number.isInteger(selected)?Math.max(0,Math.min(GARDENS.length-1,selected)):level.garden,open=unlockedGarden(g),done=Array.from({length:12},(_,i)=>completed(g*12+i)).filter(Boolean).length;
+ modal(`<div class="eyebrow">YOUR ADVENTURE · ${Object.keys(records).filter(k=>Number(k)>=0&&Number(k)<TOTAL_LEVELS).length} / ${TOTAL_LEVELS} CLIMBS</div><h2>The garden trail.</h2>${gardenCards(g)}<h3>${GARDENS[g].name}</h3><p>${open?GARDENS[g].rule:`Complete all 12 climbs in ${GARDENS[g-1].name} to unlock this garden.`}</p>${open?`<div class="map-progress">${done} / 12 complete ${done===12?'· Garden blooming!':''}</div><div class="level-grid">${Array.from({length:12},(_,i)=>{const index=g*12+i;return `<button data-level="${index}" aria-label="${title(index)}${completed(index)?', completed':''}">${String(i+1).padStart(2,'0')}<small>${completed(index)?'✓':'·'}</small></button>`;}).join('')}</div>`:'<div class="locked-garden">▣<p>A new adventure is waiting beyond the gate.</p></div>'}<div class="map-actions">${GARDENS.every((_,i)=>gardenComplete(i))?'<button class="primary" id="finale">Celebrate your adventure ✦</button>':''}<button class="secondary" id="close">Back to the climb</button></div>`,'map');
  // Put dialog focus on the selected garden, rather than the first garden button.
  document.querySelector(`[data-garden="${g}"]`)?.focus?.({preventScroll:true});
  document.querySelectorAll('[data-garden]').forEach(b=>b.onclick=()=>showLevels(Number(b.dataset.garden)));
