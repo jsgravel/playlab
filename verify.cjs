@@ -146,3 +146,11 @@ console.log('PASS: smooth camera scheduling, rapid-hop retargeting, stable repai
  assert.ok(delayedForks>=60,'The expansion adds many actual multi-hop planning decisions');assert.ok(challenge.soundEvents.includes('spend'));
  console.log('PASS: 24 resource puzzles, delayed-dead-end forks, exact budgets, toll refunds, saved-progress migration, and spending cues.');
 }
+
+{
+ let pending;const preview=boot({tutorialsSeen:{0:true}}, {show(g,options){pending={g,options};}});
+ preview.api.showLevels(5);preview.document.getElementById('preview-lesson').onclick();assert.equal(pending.g,5);
+ pending.options.onDone();assert.equal(preview.storage().tutorialsSeen[5],undefined,'Previewing a locked garden does not acknowledge its later intro');
+ assert.equal(preview.api.unlockedGarden(5),false,'A tutorial preview does not unlock levels');assert.equal(preview.document.getElementById('dialog').dataset.view,'map');
+ console.log('PASS: locked garden lesson previews return to the trail without changing unlocks or tutorial acknowledgements.');
+}
