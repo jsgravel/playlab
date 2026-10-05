@@ -21,3 +21,23 @@
 .footer-options{display:flex;gap:16px;align-items:center}.footer-options button{min-height:44px}.options-list{display:grid;gap:12px;margin:22px 0}.options-list button{width:100%;min-height:52px}.options-list #reset-game{color:#956655;margin-top:12px}.immersive footer{display:flex}.immersive footer>span{display:none}.immersive .footer-options{width:100%;justify-content:space-between}
 
 .game .playfield{overflow-anchor:none}.playfield .rabbit{transition:left .28s ease-out,top .28s ease-out}.playfield .rabbit.hopping{animation-duration:.28s}
+
+/* The trail is a compact chooser, with every garden available at once. */
+#dialog[data-view="map"]{padding:18px;width:min(430px,calc(100% - 24px));max-height:calc(100dvh - 24px)}
+#dialog[data-view="map"] h2{font-size:25px;margin-top:4px}
+#dialog[data-view="map"] .eyebrow{font-size:8px;letter-spacing:1px}
+#dialog[data-view="map"] .garden-tabs.garden-cards{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;margin:14px 0}
+#dialog[data-view="map"] .garden-cards button{min-height:82px;padding:8px 3px;text-align:center;border-radius:10px}
+#dialog[data-view="map"] .garden-cards button:last-child{grid-column:auto;min-height:82px}
+#dialog[data-view="map"] .garden-cards button>span{font-size:22px}
+#dialog[data-view="map"] .garden-cards strong{font-size:9px;letter-spacing:-.2px;margin:4px 0}
+#dialog[data-view="map"] .garden-cards small{font-size:9px;line-height:1.2;margin-top:0}
+#dialog[data-view="map"] .card-meter{margin:6px 3px 0}
+#dialog[data-view="map"] h3{font-size:20px;margin:8px 0 4px}
+#dialog[data-view="map"] p{font-size:11px;line-height:1.45;margin:5px 0 10px}
+#dialog[data-view="map"] .level-grid{margin:10px 0;gap:6px}
+#dialog[data-view="map"] .level-grid button{min-height:48px;border-radius:10px;font-size:14px}
+#dialog[data-view="map"] .level-grid small{margin-top:2px;font-size:10px}
+#dialog[data-view="map"] .secondary,#dialog[data-view="map"] .primary{min-height:44px;padding:10px;margin-top:6px;font-size:12px}
+#dialog[data-view="map"] .locked-garden{padding:18px;font-size:25px}
+@media(max-height:520px) and (min-width:600px){#dialog[data-view="map"]{width:min(680px,calc(100% - 24px));padding:12px 18px}#dialog[data-view="map"] .garden-tabs.garden-cards{margin:8px 0}#dialog[data-view="map"] .garden-cards button,#dialog[data-view="map"] .garden-cards button:last-child{min-height:70px}#dialog[data-view="map"] .level-grid{grid-template-columns:repeat(6,1fr)}}
