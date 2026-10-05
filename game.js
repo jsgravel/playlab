@@ -103,10 +103,13 @@ function render(){
   b.setAttribute('aria-label',`${SYMBOL_NAMES[tile.entry]} tile${isFinish?', finish':`, next match ${SYMBOL_NAMES[tile.next]}`}${tile.star?', with star':''}${tile.key?', collect a key':''}${tile.lock?`, requires ${tile.lock} keys`:''}${tile.spring?', spring: next jump skips one row':''}`);
   const inRow=tile.r===n.r+(n.spring?2:1),nearby=level.garden===0||Math.abs(tile.c-n.c)<=1;
   b.disabled=!inRow||!nearby;
+  if(n.spring&&tile.r===n.r+1)b.classList.add('spring-skipped');
+  if(n.spring&&inRow)b.classList.add('spring-landing');
   if(inRow&&!nearby)b.classList.add('out-of-reach');
   if(tile.lock&&keyCount()<tile.lock)b.classList.add('locked');
   b.onclick=()=>hop(tile);board.append(b);
  }
+ if(n.spring){const marker=document.createElement('div');marker.className='spring-row-label';marker.textContent='↑↑ LAND TWO ROWS ABOVE';marker.style.top=(position({r:n.r+2,c:0}).y-42)+'px';board.append(marker);}
  const rabbit=$('rabbit'),p=position(n);rabbit.style.left=p.x+'%';rabbit.style.top=(p.y-19)+'px';
  const finished=n.r===level.rows-1;
  $('progress').style.width=((path.length-1)/level.rows*100)+'%';$('match').innerHTML=finished?'✦':symbolHTML(n.next);$('stars').textContent=path.filter(t=>t.star).length;$('undo').disabled=path.length===1;
