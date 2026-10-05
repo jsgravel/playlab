@@ -10,6 +10,7 @@ const GARDENS = [
  {name:'Starlight Sanctuary',icon:'🌙',theme:'starlight',rule:'A fifth symbol, nearby hops, springs, and two-key gates. Take your time.',message:'The sanctuary is shining. Every garden in your adventure is complete!',titles:['The fifth little symbol','Moonlit branches','Two little keys','A starry spring','The patient path','Midnight lanterns','The silver crossing','Constellation climb','A winding wish','The final gateway','Almost among the stars','A home in starlight']}
 ];
 const LEVELS_PER_GARDEN=12,TOTAL_LEVELS=GARDENS.length*LEVELS_PER_GARDEN;
+const DESTINATIONS=[{icon:'🏡',name:'The clover treehouse'},{icon:'🌳',name:'The willow lookout'},{icon:'🏮',name:'The lantern pavilion'},{icon:'🪺',name:'The cloud nest'},{icon:'🌙',name:'The starlight home'}];
 const NAMES = ['First little steps','A fork in the flowers','Follow the moon','The scenic route','Clover company','A golden detour','Above the treetops','Petal paths','Cloud companions','The long way home','One more little hop','A home in the clouds'];
 const $ = id => document.getElementById(id);
 let saved = {};
@@ -100,6 +101,7 @@ function render(){
  for(const tile of [level.start,...level.nodes]){
   const p=position(tile),b=document.createElement('button');b.className='tile'+(tile.r<n.r?' past':'')+(tile.id===n.id?' current':'');b.style.left=p.x+'%';b.style.top=p.y+'px';b.dataset.id=tile.id;
   const isFinish=tile.r===level.rows-1;
+  if(isFinish)b.classList.add('finish-tile');
   const gateOpened=tile.lock&&path.some(t=>t.id===tile.id);
   b.innerHTML=symbolHTML(tile.id===n.id&&!isFinish?tile.next:tile.entry)+(tile.id===n.id||isFinish?'':symbolHTML(tile.next,'next'))+(tile.star?'<span class="star">✦</span>':'')+((tile.key||tile.lock||tile.spring)?`<span class="mechanic has-icon">${tile.key?mechanicIcon('key'):''}${tile.lock?mechanicIcon(gateOpened?'open':'lock')+`<small>${tile.lock}</small>`:''}${tile.spring?'↑↑':''}</span>`:'');
   if(gateOpened&&tile.id===n.id)b.classList.add('gate-opened');
@@ -112,6 +114,7 @@ function render(){
   if(tile.lock&&keyCount()<tile.lock)b.classList.add('locked');
   b.onclick=()=>hop(tile);board.append(b);
  }
+ const destination=document.createElement('div');destination.className='destination'+(n.r===level.rows-1?' arrived':'');destination.innerHTML=`<span>${DESTINATIONS[level.garden].icon}</span><div><small>${n.r===level.rows-1?'WELCOME HOME':'YOUR LITTLE DESTINATION'}</small><strong>${DESTINATIONS[level.garden].name}</strong></div>`;board.append(destination);
  if(n.spring){const marker=document.createElement('div');marker.className='spring-row-label';marker.textContent='↑↑ LAND TWO ROWS ABOVE';marker.style.top=(position({r:n.r+2,c:0}).y-42)+'px';board.append(marker);}
  const rabbit=$('rabbit'),p=position(n);rabbit.style.left=p.x+'%';rabbit.style.top=(p.y-19)+'px';
  const finished=n.r===level.rows-1;
