@@ -41,3 +41,6 @@
 #dialog[data-view="map"] .secondary,#dialog[data-view="map"] .primary{min-height:44px;padding:10px;margin-top:6px;font-size:12px}
 #dialog[data-view="map"] .locked-garden{padding:18px;font-size:25px}
 @media(max-height:520px) and (min-width:600px){#dialog[data-view="map"]{width:min(680px,calc(100% - 24px));padding:12px 18px}#dialog[data-view="map"] .garden-tabs.garden-cards{margin:8px 0}#dialog[data-view="map"] .garden-cards button,#dialog[data-view="map"] .garden-cards button:last-child{min-height:70px}#dialog[data-view="map"] .level-grid{grid-template-columns:repeat(6,1fr)}}
+
+html:has(dialog[open]),body:has(dialog[open]){overflow:hidden}
+@media(max-width:360px){#dialog[data-view="map"]{padding:12px}}
