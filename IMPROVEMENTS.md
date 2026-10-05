@@ -3,7 +3,7 @@
 Implement and verify each stage before proceeding; preserve saved progress throughout.
 
 - [x] Make spring skipped and destination rows readable without revealing matching choices.
-- [ ] Replace key/gate glyphs with clear icons and a visible key inventory.
+- [x] Replace key/gate glyphs with clear icons and a visible key inventory.
 - [ ] Add themed destinations and arrival feedback.
 - [ ] Replace tiny garden tabs with named progression cards.
 - [ ] Compact phone layout and keep long climbs inside a scrollable play window.

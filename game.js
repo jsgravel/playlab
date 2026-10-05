@@ -86,11 +86,12 @@ function bestRoute(n,keys=keyCount()) {
  return best;
 }
 function symbolHTML(s,cls='symbol'){return `<span class="${cls}" style="color:${COLORS[s]}">${SYMBOLS[s]}</span>`;}
+function mechanicIcon(kind){const drawing=kind==='key'?'<circle cx="7" cy="8" r="4"/><path d="m10 11 9 9m-4-4 3-3m-6 0 3-3"/>':`<rect x="5" y="10" width="14" height="11" rx="3"/><path d="${kind==='open'?'M9 10V6a4 4 0 0 1 8 0':'M8 10V6a4 4 0 0 1 8 0v4'}"/><circle cx="12" cy="15" r="1"/>`;return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${drawing}</svg>`;}
 function boardHeight(){return level.rows*80+115;}
 function position(n){return {x:n.r<0&&level.garden===0?50:(n.c+1)*100/(level.count+1),y:boardHeight()-40-(n.r+1)*80};}
 const bunny = '<svg viewBox="0 0 50 60" aria-hidden="true"><ellipse cx="18" cy="17" rx="5" ry="15" fill="#fff9e9" stroke="#bcbfa6"/><ellipse cx="32" cy="15" rx="5" ry="15" fill="#fff9e9" stroke="#bcbfa6"/><path d="M18 7v15M32 5v15" stroke="#e4b5a2" stroke-width="3" stroke-linecap="round"/><ellipse cx="25" cy="43" rx="16" ry="15" fill="#fff9e9" stroke="#bcbfa6"/><ellipse cx="25" cy="31" rx="17" ry="14" fill="#fff9e9" stroke="#bcbfa6"/><circle cx="19" cy="30" r="1.6" fill="#3f5946"/><circle cx="31" cy="30" r="1.6" fill="#3f5946"/><path d="m23 34 2 2 2-2" fill="#cf9686"/><circle cx="15" cy="35" r="3" fill="#edc8af"/><circle cx="35" cy="35" r="3" fill="#edc8af"/><ellipse cx="16" cy="55" rx="7" ry="3" fill="#fff9e9"/><ellipse cx="34" cy="55" rx="7" ry="3" fill="#fff9e9"/></svg>';
 function load(index){if(!Number.isInteger(index)||index<0||index>=TOTAL_LEVELS||!unlockedGarden(Math.floor(index/12)))return false;clearTimeout(animationTimer);clearTimeout(feedbackTimer);levelIndex=index;level=makeLevel(index);path=[level.start];$('rabbit').innerHTML=bunny;$('rabbit').classList.remove('hopping');render();persist();if(!tutorialsSeen[level.garden])showLesson();return true;}
-function showLesson(){const g=level.garden;window.TileHopLessons?.show(g,{bunny,onSound:cue,onDone:()=>{tutorialsSeen[g]=true;persist();}});}
+function showLesson(){const g=level.garden;window.TileHopLessons?.show(g,{bunny,icon:mechanicIcon,onSound:cue,onDone:()=>{tutorialsSeen[g]=true;persist();}});}
 function render(){
  const garden=GARDENS[level.garden];
  $('level-title').textContent=title(levelIndex);$('chapter').textContent=`${level.garden+1} / ${GARDENS.length} · ${garden.name.toUpperCase()}`;$('levels').textContent=`${String(levelIndex%12+1).padStart(2,'0')} / 12`;
@@ -99,7 +100,9 @@ function render(){
  for(const tile of [level.start,...level.nodes]){
   const p=position(tile),b=document.createElement('button');b.className='tile'+(tile.r<n.r?' past':'')+(tile.id===n.id?' current':'');b.style.left=p.x+'%';b.style.top=p.y+'px';b.dataset.id=tile.id;
   const isFinish=tile.r===level.rows-1;
-  b.innerHTML=symbolHTML(tile.id===n.id&&!isFinish?tile.next:tile.entry)+(tile.id===n.id||isFinish?'':symbolHTML(tile.next,'next'))+(tile.star?'<span class="star">✦</span>':'')+((tile.key||tile.lock||tile.spring)?`<span class="mechanic">${tile.key?'⚿ ':''}${tile.lock?'▣'+tile.lock+' ':''}${tile.spring?'↑↑':''}</span>`:'');
+  const gateOpened=tile.lock&&path.some(t=>t.id===tile.id);
+  b.innerHTML=symbolHTML(tile.id===n.id&&!isFinish?tile.next:tile.entry)+(tile.id===n.id||isFinish?'':symbolHTML(tile.next,'next'))+(tile.star?'<span class="star">✦</span>':'')+((tile.key||tile.lock||tile.spring)?`<span class="mechanic has-icon">${tile.key?mechanicIcon('key'):''}${tile.lock?mechanicIcon(gateOpened?'open':'lock')+`<small>${tile.lock}</small>`:''}${tile.spring?'↑↑':''}</span>`:'');
+  if(gateOpened&&tile.id===n.id)b.classList.add('gate-opened');
   b.setAttribute('aria-label',`${SYMBOL_NAMES[tile.entry]} tile${isFinish?', finish':`, next match ${SYMBOL_NAMES[tile.next]}`}${tile.star?', with star':''}${tile.key?', collect a key':''}${tile.lock?`, requires ${tile.lock} keys`:''}${tile.spring?', spring: next jump skips one row':''}`);
   const inRow=tile.r===n.r+(n.spring?2:1),nearby=level.garden===0||Math.abs(tile.c-n.c)<=1;
   b.disabled=!inRow||!nearby;
@@ -113,6 +116,7 @@ function render(){
  const rabbit=$('rabbit'),p=position(n);rabbit.style.left=p.x+'%';rabbit.style.top=(p.y-19)+'px';
  const finished=n.r===level.rows-1;
  $('progress').style.width=((path.length-1)/level.rows*100)+'%';$('match').innerHTML=finished?'✦':symbolHTML(n.next);$('stars').textContent=path.filter(t=>t.star).length;$('undo').disabled=path.length===1;
+ $('keys').innerHTML=mechanicIcon('key')+`<strong>${keyCount()}</strong>`;$('keys').hidden=level.garden<2;$('keys').setAttribute('aria-label',`${keyCount()} keys collected`);
  const stuck=choices(n).length===0&&n.r<level.rows-1;
  $('prompt').textContent=finished?'You made it to the top!':stuck?'A little detour!':path.length===1&&levelIndex===0?'Tap a flower to hop':'Find a '+SYMBOL_NAMES[n.next];
  $('subprompt').textContent=finished?'Enjoy the view. Your climb is complete.':stuck?'Undo a hop and try another path.':n.spring?'Spring hop! Match two rows above.':level.garden>=2?`⚿ ${keyCount()} ${keyCount()===1?'key':'keys'} collected · ▣ gates need keys.`:level.garden===1?'Stay nearby: at most one column sideways.':'Small symbol = your next match. ✦ = bonus star.';

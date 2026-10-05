@@ -12,11 +12,12 @@
  const groups=[['match'],['nearby'],['key'],['spring'],['sun','twoKeys']];
  let timers=[],session=0;
  function cleanup(){session++;timers.forEach(clearTimeout);timers=[];}
- function show(g,{bunny,onDone,onSound}){
+ function show(g,{bunny,icon,onDone,onSound}){
   cleanup();const dialog=document.getElementById('lesson-dialog'),content=document.getElementById('lesson-content');let page=0;
   function draw(){
    cleanup();const lesson=lessons[groups[g][page]],token=session;let step=0;
    content.innerHTML=`<div class="eyebrow">A NEW GARDEN, A LITTLE NEW TRICK · ${page+1} / ${groups[g].length}</div><h2>${lesson.title}</h2><p>${lesson.text}</p><div class="lesson-scene" aria-label="Interactive example"><div class="lesson-row" style="top:120px"></div>${lesson.tiles.map((t,i)=>`<button class="lesson-tile ${t.decoy?'lesson-decoy':''}" data-example="${i}" style="left:${t.x}%;top:${t.y}px" aria-label="${t.s} example tile${t.badge?' '+t.badge:''}">${t.s}${t.next?`<small>${t.next}</small>`:''}${t.badge?`<b>${t.badge}</b>`:''}</button>`).join('')}<div class="lesson-rabbit" id="lesson-rabbit">${bunny}</div></div><p id="lesson-tip" class="lesson-tip" aria-live="polite"></p><div class="lesson-actions"><button class="secondary" id="lesson-replay">↻ Watch again</button><button class="secondary" id="lesson-try">Try it myself</button></div><button class="primary" id="lesson-next">${page<groups[g].length-1?'Next little trick →':'Let’s play →'}</button><p class="lesson-note">Tap the example tiles to try it yourself. No progress is changed.</p>`;
+   if(icon)content.querySelectorAll('[data-example]').forEach(b=>{const badge=lesson.tiles[Number(b.dataset.example)].badge;if(badge){const label=b.querySelector('b');if(label)label.innerHTML=badge==='⚿'?icon('key'):icon('lock')+badge.slice(1);}});
    const rabbit=document.getElementById('lesson-rabbit'),tip=document.getElementById('lesson-tip');
    function paint(){const tile=lesson.tiles[step];rabbit.style.left=tile.x+'%';rabbit.style.top=(tile.y-22)+'px';tip.textContent=lesson.tips[step];content.querySelectorAll('[data-example]').forEach(b=>b.classList.toggle('lesson-target',Number(b.dataset.example)===step+1));}
    function advance(i){
