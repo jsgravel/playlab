@@ -17,6 +17,11 @@ try { saved = JSON.parse(localStorage.getItem('tilehop-v1') || '{}') || {}; } ca
 let levelIndex = Math.min(TOTAL_LEVELS-1, Math.max(0, Math.floor(Number(saved.level) || 0)));
 let records = saved.records && typeof saved.records === 'object' ? saved.records : {};
 let tutorialsSeen=saved.tutorialsSeen&&typeof saved.tutorialsSeen==='object'?saved.tutorialsSeen:{};
+function validCount(value){return Number.isSafeInteger(value)&&value>=0?value:0;}
+function levelFlags(value){return Object.fromEntries(Object.entries(value&&typeof value==='object'?value:{}).filter(([key,v])=>Number.isInteger(Number(key))&&Number(key)>=0&&Number(key)<TOTAL_LEVELS&&v===true));}
+const storedStats=saved.stats&&typeof saved.stats==='object'?saved.stats:{};
+let stats={undoUses:validCount(storedStats.undoUses),restarts:validCount(storedStats.restarts),flawless:levelFlags(storedStats.flawless),dirty:levelFlags(storedStats.dirty)};
+function markError(){stats.dirty[levelIndex]=true;persist();}
 let level, path, animationTimer, feedbackTimer;
 function completed(index){return Object.hasOwn(records,index);}
 function gardenComplete(g){return Array.from({length:12},(_,i)=>completed(g*12+i)).every(Boolean);}
@@ -111,8 +116,8 @@ function render(){
 }
 function hop(tile){
  const n=current();if(tile.r!==n.r+(n.spring?2:1)||level.garden>0&&Math.abs(tile.c-n.c)>1)return;
- if(tile.lock&&keyCount()<tile.lock){$('prompt').textContent=`This gate needs ${tile.lock} ${tile.lock===1?'key':'keys'}`;$('subprompt').textContent='Undo and take a path through a key tile ⚿.';$('announcement').textContent=$('prompt').textContent;cue('locked');return;}
- if(tile.entry!==n.next){const b=document.querySelector(`[data-id="${tile.id}"]`);b.classList.remove('wrong');void b.offsetWidth;b.classList.add('wrong');$('prompt').textContent='Look for the same symbol';clearTimeout(feedbackTimer);feedbackTimer=setTimeout(render,1100);tone(160,.08);return;}
+ if(tile.lock&&keyCount()<tile.lock){markError();$('prompt').textContent=`This gate needs ${tile.lock} ${tile.lock===1?'key':'keys'}`;$('subprompt').textContent='Undo and take a path through a key tile ⚿.';$('announcement').textContent=$('prompt').textContent;cue('locked');return;}
+ if(tile.entry!==n.next){markError();const b=document.querySelector(`[data-id="${tile.id}"]`);b.classList.remove('wrong');void b.offsetWidth;b.classList.add('wrong');$('prompt').textContent='Look for the same symbol';clearTimeout(feedbackTimer);feedbackTimer=setTimeout(render,1100);tone(160,.08);return;}
  clearTimeout(feedbackTimer);clearTimeout(animationTimer);
  // Commit the move immediately. Animation is decoration, never an input lock.
  path.push(tile);render();const rabbit=$('rabbit');rabbit.classList.remove('hopping');void rabbit.offsetWidth;rabbit.classList.add('hopping');
@@ -123,12 +128,13 @@ function hop(tile){
  if(tile.r===level.rows-1)animationTimer=setTimeout(win,180);
 }
 function celebrate(){for(let i=0;i<8;i++){const s=document.createElement('span');s.className='confetti';s.textContent='✦';s.style.left=(25+Math.random()*50)+'%';s.style.top=(60+Math.random()*150)+'px';$('playfield').append(s);setTimeout(()=>s.remove(),1100);}}
-function persist(){try{localStorage.setItem('tilehop-v1',JSON.stringify({level:levelIndex,records,tutorialsSeen}));}catch(_){}}
+function persist(){try{localStorage.setItem('tilehop-v1',JSON.stringify({level:levelIndex,records,tutorialsSeen,stats}));}catch(_){}}
 function modal(html){$('dialog-content').innerHTML=html;if(!$('dialog').open)$('dialog').showModal();}
 function close(){ $('dialog').close(); }
 function win(){
+ animationTimer=undefined;
  const stars=path.filter(t=>t.star).length,g=level.garden,wasComplete=gardenComplete(g),wasGameComplete=GARDENS.every((_,i)=>gardenComplete(i));
- records[levelIndex]=Math.max(Number(records[levelIndex])||0,stars);persist();render();celebrate();
+ records[levelIndex]=Math.max(Number(records[levelIndex])||0,stars);if(!stats.dirty[levelIndex])stats.flawless[levelIndex]=true;delete stats.dirty[levelIndex];persist();render();celebrate();
  if(!wasGameComplete&&GARDENS.every((_,i)=>gardenComplete(i))){showFinale();return;}
  if(!wasComplete&&gardenComplete(g)){showGardenWin(g);return;}
  cue('complete');
@@ -156,7 +162,24 @@ function showLevels(selected=level.garden){
 }
 function tone(freq,duration){window.TileHopAudio?.effect(freq,duration);}
 function cue(name){window.TileHopAudio?.cue(name);}
-$('undo').onclick=()=>{if(path.length===1)return;clearTimeout(animationTimer);clearTimeout(feedbackTimer);path.pop();render();tone(300,.08);};$('restart').onclick=()=>load(levelIndex);
+function finishPendingClimb(){if(animationTimer&&current().r===level.rows-1){clearTimeout(animationTimer);win();}}
+function showStats(){
+ finishPendingClimb();
+ const cleared=Array.from({length:TOTAL_LEVELS},(_,i)=>completed(i)).filter(Boolean).length;
+ modal(`<div class="eyebrow">YOUR LITTLE ADVENTURE</div><h2>Your stats.</h2><div class="stats-grid"><div><strong>${stats.undoUses}</strong><span>Undo uses</span></div><div><strong>${stats.restarts}</strong><span>Level restarts</span></div><div><strong>${Object.keys(stats.flawless).length}</strong><span>Flawless levels</span></div><div><strong>${cleared} / ${TOTAL_LEVELS}</strong><span>Levels completed</span></div></div><p>A flawless level is a climb completed without a wrong match, blocked-gate tap, undo, or restart. Each level counts once; a clean replay can earn its flawless mark.</p><p>Hints are welcome and do not count as mistakes. These stats started tracking with this update; earlier clears keep their progress, but have no recorded flawless result.</p><button class="secondary" id="reset-from-stats">Restart entire game…</button><button class="primary" id="close">Back to the garden</button>`);
+ $('reset-from-stats').onclick=warnReset;$('close').onclick=close;
+}
+function warnReset(){
+ finishPendingClimb();
+ modal('<div class="big-icon">↻</div><div class="eyebrow">START A BRAND-NEW ADVENTURE?</div><h2>Restart the entire game?</h2><p>This will erase <strong>all completed levels, unlocked gardens, collected star records, tutorial acknowledgements, and statistics</strong> saved in this browser.</p><p><strong>This cannot be undone.</strong> You’ll return to level 1 in Clover Garden. Your music and effects preferences will stay.</p><button class="primary" id="cancel-reset" autofocus>Keep my progress</button><button class="danger" id="confirm-reset">Yes, erase progress and restart</button>');
+ $('cancel-reset').onclick=close;$('confirm-reset').onclick=()=>{
+  clearTimeout(animationTimer);clearTimeout(feedbackTimer);window.TileHopLessons?.cleanup();$('lesson-dialog').close();close();
+  records={};tutorialsSeen={};stats={undoUses:0,restarts:0,flawless:{},dirty:{}};load(0);$('announcement').textContent='Game restarted. Welcome back to Clover Garden.';
+ };
+ $('cancel-reset').focus?.({preventScroll:true});
+}
+$('undo').onclick=()=>{if(path.length===1)return;stats.undoUses++;markError();clearTimeout(animationTimer);clearTimeout(feedbackTimer);path.pop();render();tone(300,.08);};$('restart').onclick=()=>{stats.restarts++;markError();load(levelIndex);};
+$('stats').onclick=showStats;$('reset-game').onclick=warnReset;
 $('hint').onclick=()=>{const route=bestRoute(current());if(!route){$('prompt').textContent='Try undoing your last hop';$('announcement').textContent='This path cannot reach the top. Undo your last hop.';return;}const next=route.route[0];if(next){document.querySelector(`[data-id="${next.id}"]`).classList.add('hinted');$('prompt').textContent='This tile leads toward home';}};
 $('levels').onclick=()=>showLevels();
 $('help').onclick=()=>{modal('<div class="big-icon">☁</div><div class="eyebrow">WELCOME TO TILE HOP</div><h2>A hop, a match, a smile.</h2><p><strong>1.</strong> Look at the big symbol on your current tile.<br><strong>2.</strong> Tap the same symbol in the next reachable row.<br><strong>3.</strong> The small symbol previews your next match.</p><p>Reach the top to complete your climb. Stars are optional little discoveries. Wrong taps are harmless; undo is always free. No timer, no rush.</p><button class="primary" id="review-lesson">Show this garden’s example</button><button class="secondary" id="close">Let’s hop →</button>');$('review-lesson').onclick=()=>{close();showLesson();};$('close').onclick=close;};
