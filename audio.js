@@ -67,7 +67,7 @@
  }
  const cues={
   hop:[[72,0,.16,'harp']],nearby:[[67,0,.15,'flute'],[74,.055,.16,'harp']],
-  key:[[84,0,.18,'bell'],[91,.08,.26,'bell'],[96,.16,.3,'bell']],
+  key:[[67,0,.2,'flute',.032],[72,.085,.24,'flute',.028],[76,.17,.28,'flute',.024]],
   unlock:[[48,0,.16,'harp'],[60,.07,.18,'harp'],[76,.13,.28,'bell']],
   locked:[[43,0,.15,'harp'],[42,.08,.17,'harp']],blocked:[[55,0,.16,'harp']],
   springReady:[[64,0,.15,'harp'],[71,.06,.17,'harp']],
@@ -82,7 +82,7 @@
   if((!ctx||ctx.state!=='running')&&!await unlock())return;
   if(!effects||token!==effectsGeneration||document.hidden)return;
   ramp(effectsBus,effectsVolume);
-  for(const [pitch,delay,duration,kind] of notes)voice(pitch,ctx.currentTime+.005+delay,duration,kind,.07,effectsBus);
+  for(const [pitch,delay,duration,kind,gain=.07] of notes)voice(pitch,ctx.currentTime+.005+delay,duration,kind,gain,effectsBus);
  }
  function muteEffects(){
   if(!ctx)return;ramp(effectsBus,0);
