@@ -95,3 +95,19 @@ for(const tile of streak.api.bestRoute(streak.api.getState().level.start).route)
 console.log('PASS: all 60 levels with rapid consecutive taps; cancelled finishes, garden locks, keys, springs, undo, saved progress, and celebrations.');
 console.log('PASS: persistent undo/restart stats, distinct flawless clears, error tracking, replay, reload, reset confirmation/cancel, and pending-finish safety.');
 console.log('PASS: designed forks, longer routes, combo tiers/reset/persistence, untimed hints, and small-phone spring visibility.');
+
+{
+// Model browser smooth scrolling as asynchronous: a hop must not snap scrollTop.
+const camera=boot({records:Object.fromEntries(Array.from({length:24},(_,i)=>[i,1]))});
+const frame=camera.document.getElementById('playfield'),scrolls=[];
+frame.scrollTo=options=>{scrolls.push(options);if(options.behavior==='instant')frame.scrollTop=options.top;};
+camera.api.load(24);assert.equal(scrolls.at(-1).behavior,'instant','Loading establishes the starting view immediately');
+const initialScroll=frame.scrollTop,route=camera.api.bestRoute(camera.api.getState().level.start).route;
+camera.context.hop(route[0]);assert.equal(scrolls.at(-1).behavior,'smooth');assert.equal(frame.scrollTop,initialScroll,'A hop schedules a glide instead of teleporting the board');
+const firstTarget=scrolls.at(-1).top;
+camera.context.hop(route[1]);assert.equal(camera.api.getState().path.length,3,'Rapid taps remain accepted during a glide');assert.ok(scrolls.at(-1).top<firstTarget,'Rapid hops retarget upward');
+const count=scrolls.length;vm.runInContext('render()',camera.context);assert.equal(scrolls.length,count,'HUD repaints do not restart the glide');
+camera.document.getElementById('undo').onclick();assert.equal(scrolls.at(-1).behavior,'smooth','Undo glides back');
+camera.context.window.matchMedia=()=>({matches:true});camera.context.hop(route[1]);assert.equal(scrolls.at(-1).behavior,'instant','Reduced motion avoids scrolling animation');
+console.log('PASS: smooth camera scheduling, rapid-hop retargeting, stable repaints, undo, initial positioning, and reduced motion.');
+}

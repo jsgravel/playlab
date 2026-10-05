@@ -106,12 +106,22 @@ function symbolHTML(s,cls='symbol'){return `<span class="${cls}" style="color:${
 function mechanicIcon(kind){const drawing=kind==='key'?'<circle cx="7" cy="8" r="4"/><path d="m10 11 9 9m-4-4 3-3m-6 0 3-3"/>':`<rect x="5" y="10" width="14" height="11" rx="3"/><path d="${kind==='open'?'M9 10V6a4 4 0 0 1 8 0':'M8 10V6a4 4 0 0 1 8 0v4'}"/><circle cx="12" cy="15" r="1"/>`;return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${drawing}</svg>`;}
 function boardHeight(){return level.rows*80+115;}
 function playWindowHeight(){const immersive=document.body?.classList?.contains?.('immersive'),phone=(window.innerWidth||800)<600;return Math.min(boardHeight(),Math.max(260,Math.min(460,(window.innerHeight||800)-(immersive?290:phone?410:300)-(level.garden>=2?42:0))));}
-function followRabbit(){const p=position(current()),height=parseFloat($('playfield').style.height)||playWindowHeight();$('playfield').scrollTop=Math.max(0,Math.min(boardHeight()-height,p.y-height+48));}
+let cameraTile,cameraTarget;
+function followRabbit(smooth=true){
+ const frame=$('playfield'),n=current(),p=position(n),height=parseFloat(frame.style.height)||playWindowHeight();
+ const top=Math.max(0,Math.min(boardHeight()-height,p.y-height+72));
+ // Repainting HUD or the completion message must not interrupt an ongoing glide.
+ if(smooth&&cameraTile===n&&cameraTarget===top)return;
+ cameraTile=n;cameraTarget=top;
+ const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+ if(frame.scrollTo)frame.scrollTo({top,behavior:smooth&&!reduced?'smooth':'instant'});
+ else frame.scrollTop=top;
+}
 function position(n){return {x:n.r<0&&level.garden===0?50:(n.c+1)*100/(level.count+1),y:boardHeight()-40-(n.r+1)*80};}
 const bunny = '<svg viewBox="0 0 50 60" aria-hidden="true"><ellipse cx="18" cy="17" rx="5" ry="15" fill="#fff9e9" stroke="#bcbfa6"/><ellipse cx="32" cy="15" rx="5" ry="15" fill="#fff9e9" stroke="#bcbfa6"/><path d="M18 7v15M32 5v15" stroke="#e4b5a2" stroke-width="3" stroke-linecap="round"/><ellipse cx="25" cy="43" rx="16" ry="15" fill="#fff9e9" stroke="#bcbfa6"/><ellipse cx="25" cy="31" rx="17" ry="14" fill="#fff9e9" stroke="#bcbfa6"/><circle cx="19" cy="30" r="1.6" fill="#3f5946"/><circle cx="31" cy="30" r="1.6" fill="#3f5946"/><path d="m23 34 2 2 2-2" fill="#cf9686"/><circle cx="15" cy="35" r="3" fill="#edc8af"/><circle cx="35" cy="35" r="3" fill="#edc8af"/><ellipse cx="16" cy="55" rx="7" ry="3" fill="#fff9e9"/><ellipse cx="34" cy="55" rx="7" ry="3" fill="#fff9e9"/></svg>';
-function load(index){if(!Number.isInteger(index)||index<0||index>=TOTAL_LEVELS||!unlockedGarden(Math.floor(index/12)))return false;clearTimeout(animationTimer);clearTimeout(feedbackTimer);levelIndex=index;level=makeLevel(index);path=[level.start];combo=0;$('rabbit').innerHTML=bunny;$('rabbit').classList.remove('hopping');render();persist();if(!tutorialsSeen[level.garden]||level.garden>=2&&!comboSeen)showLesson();return true;}
+function load(index){if(!Number.isInteger(index)||index<0||index>=TOTAL_LEVELS||!unlockedGarden(Math.floor(index/12)))return false;clearTimeout(animationTimer);clearTimeout(feedbackTimer);levelIndex=index;level=makeLevel(index);path=[level.start];combo=0;$('rabbit').innerHTML=bunny;$('rabbit').classList.remove('hopping');render(false);persist();if(!tutorialsSeen[level.garden]||level.garden>=2&&!comboSeen)showLesson();return true;}
 function showLesson(){const g=level.garden;window.TileHopLessons?.show(g,{bunny,icon:mechanicIcon,onSound:cue,onDone:()=>{tutorialsSeen[g]=true;if(g>=2)comboSeen=true;persist();}});}
-function render(){
+function render(smooth=true){
  const garden=GARDENS[level.garden];
  $('level-title').textContent=title(levelIndex);$('chapter').textContent=`${level.garden+1} / ${GARDENS.length} · ${garden.name.toUpperCase()}`;$('levels').textContent=`${String(levelIndex%12+1).padStart(2,'0')} / 12`;
  $('garden-rule').textContent=garden.rule;$('garden-progress').textContent=`${Array.from({length:12},(_,i)=>completed(level.garden*12+i)).filter(Boolean).length} of 12 climbs complete`;
@@ -142,7 +152,7 @@ function render(){
  $('prompt').textContent=finished?'You made it to the top!':stuck?'A little detour!':path.length===1&&levelIndex===0?'Tap a flower to hop':'Find a '+SYMBOL_NAMES[n.next];
  $('subprompt').textContent=finished?'Enjoy the view. Your climb is complete.':stuck?'Undo a hop and try another path.':n.spring?'Spring hop! Match two rows above.':level.garden>=2?`⚿ ${keyCount()} ${keyCount()===1?'key':'keys'} collected · ▣ gates need keys.`:level.garden===1?'Stay nearby: at most one column sideways.':'Small symbol = your next match. ✦ = bonus star.';
  const frame=$('playfield').getBoundingClientRect?.();if(frame&&window.innerHeight){const lower=['.instruction','.controls','.game-tools'].reduce((sum,selector)=>sum+(document.querySelector(selector)?.getBoundingClientRect?.().height||0),0);$('playfield').style.height=Math.min(boardHeight(),Math.max(260,Math.min(460,window.innerHeight-Math.max(0,frame.top)-lower-8)))+'px';}
- followRabbit();
+ followRabbit(smooth);
  updateCombo();
 }
 function hop(tile){
@@ -228,6 +238,6 @@ $('levels').onclick=()=>showLevels();
 $('help').onclick=()=>{modal('<div class="big-icon">☁</div><div class="eyebrow">WELCOME TO TILE HOP</div><h2>A hop, a match, a smile.</h2><p><strong>1.</strong> Look at the big symbol on your current tile.<br><strong>2.</strong> Tap the same symbol in the next reachable row.<br><strong>3.</strong> The small symbol previews your next match.</p><p>Reach the top to complete your climb. Stars are optional little discoveries. Wrong taps are harmless; undo is always free. No timer, no rush.</p><button class="primary" id="review-lesson">Show this garden’s example</button><button class="secondary" id="close">Let’s hop →</button>');$('review-lesson').onclick=()=>{close();showLesson();};$('close').onclick=close;};
 if(!unlockedGarden(Math.floor(levelIndex/12)))levelIndex=firstUnfinished(0);
 load(levelIndex);
-window.addEventListener?.('resize',()=>render());
+window.addEventListener?.('resize',()=>render(false));
 // Pure generation and solver helpers are exposed for lightweight offline checks.
 window.TileHop={makeLevel,getState:()=>({levelIndex,level,path:[...path],combo,records:{...records}}),bestRoute,load,completed,gardenComplete,unlockedGarden,showLevels};
