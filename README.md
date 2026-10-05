@@ -4,13 +4,15 @@ A gentle, mobile-first matching puzzle. Plan ahead using each tile's small next-
 
 ## Garden adventure
 
-Each garden has 12 climbs. Finish every climb in a garden to unlock the next; unlocked gardens allow their levels to be played in any order. Completing a garden celebrates the milestone and offers entry to the next. Completing all 60 levels triggers the final congratulations celebration, which can be revisited from the garden trail.
+Each garden has 12 climbs. Finish every climb in a garden to unlock the next; unlocked gardens allow their levels to be played in any order. Completing a garden celebrates the milestone and offers entry to the next. Completing all 84 levels triggers the final congratulations celebration, which can be revisited from the garden trail.
 
 1. **Clover Garden:** the original matching puzzles.
 2. **Willow Walk:** hops reach at most one column sideways.
 3. **Lantern Orchard:** collect keys before landing on gated tiles. Keys are retained through the climb and gates do not consume them.
 4. **Cloud Springs:** spring tiles skip the next row; match a tile two rows above.
 5. **Starlight Sanctuary:** a fifth symbol, longer routes, and two-key gates combine the mechanics.
+6. **Copper Grove:** spending gates and longer forks introduce key budgeting.
+7. **Crystal Labyrinth:** deeper branches, repeated tolls, and two-key spending gates test multi-hop planning.
 
 Rules appear above each puzzle. Undo reverses key collection and spring position. Hints evaluate reach, keys, and spring hops to find a complete route. Stars remain optional discoveries, not a completion requirement.
 
@@ -52,3 +54,7 @@ The garden camera glides upward with each hop and gently follows undo. Rapid tap
 Copper Grove and Crystal Labyrinth add 24 levels after the original 60; existing saved level numbers, completions, and statistics stay compatible. Copper gates show a minus-key badge and **spend** the indicated keys; original gates still only require keys. Undo refunds a toll and removes any key collected on the undone tile. The hint solver accounts for both collection and spending.
 
 The new gardens use authored multi-hop forks instead of immediate dead ends. Both branches can keep matching before merging at a gate, but only one carries enough keys through the tolls. Planning depth increases within each garden; Copper Grove has 10–21 rows and Crystal Labyrinth 18–32 rows. Stars remain optional and do not identify the correct route. Every puzzle is checked for solvability and delayed failure branches; the game stays untimed with free undo and hints. New mechanics receive compact interactive lessons. The garden trail uses two compact rows for all seven gardens.
+
+Locked gardens offer a tutorial preview. Viewing it does not unlock levels or skip the introductory lesson when the garden is reached.
+
+Finishing a level keeps the final landing visible. A smiling rabbit dances beside a 40-piece confetti burst, while a compact inline card offers the next climb or next garden. Garden milestones and the 84-level congratulations use that same unobstructed view. Reduced-motion preferences suppress the burst and dance. Completion remains saved immediately; pressing Next restores the regular controls.

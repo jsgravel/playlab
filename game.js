@@ -26,7 +26,7 @@ const storedStats=saved.stats&&typeof saved.stats==='object'?saved.stats:{};
 let stats={undoUses:validCount(storedStats.undoUses),restarts:validCount(storedStats.restarts),bestCombo:validCount(storedStats.bestCombo),flawless:levelFlags(storedStats.flawless),dirty:levelFlags(storedStats.dirty)};
 let combo=0,comboSeen=saved.comboSeen===true;
 function markError(){stats.dirty[levelIndex]=true;combo=0;updateCombo();persist();}
-let level, path, animationTimer, feedbackTimer;
+let level, path, animationTimer, feedbackTimer,arrival=null;
 function updateCombo(){if(!level)return;const active=level.garden>=2,tier=combo>=10?'starlight':combo>=6?'bloom':combo>=3?'bud':'seed';$('combo-bar').hidden=!active;$('combo-count').textContent=combo+'×';$('combo-label').textContent=combo>=10?'Starlight flow':combo>=6?'In full bloom':combo>=3?'Finding your rhythm':combo?'A lovely start':'A fresh little streak';$('combo-bar').dataset.tier=tier;$('playfield').dataset.combo=active?tier:'seed';}
 function comboSparkles(){if(combo<3)return;const count=combo>=10?8:combo>=6?4:2,p=position(current());for(let i=0;i<count;i++){const s=document.createElement('span');s.className='combo-spark';s.textContent=combo>=10?'✦':'✧';s.style.left=`calc(${p.x}% + ${(i-count/2)*11}px)`;s.style.top=(p.y-35)+'px';$('playfield').append(s);setTimeout(()=>s.remove(),650);}}
 function completed(index){return Object.hasOwn(records,index);}
@@ -155,8 +155,8 @@ function bestRoute(n,keys=keyCount()) {
 }
 function symbolHTML(s,cls='symbol'){return `<span class="${cls}" style="color:${COLORS[s]}">${SYMBOLS[s]}</span>`;}
 function mechanicIcon(kind){const drawing=kind==='key'?'<circle cx="7" cy="8" r="4"/><path d="m10 11 9 9m-4-4 3-3m-6 0 3-3"/>':`<rect x="5" y="10" width="14" height="11" rx="3"/><path d="${kind==='open'?'M9 10V6a4 4 0 0 1 8 0':'M8 10V6a4 4 0 0 1 8 0v4'}"/><circle cx="12" cy="15" r="1"/>`;return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${drawing}</svg>`;}
-function boardHeight(){return level.rows*80+115;}
-function playWindowHeight(){const immersive=document.body?.classList?.contains?.('immersive'),phone=(window.innerWidth||800)<600;return Math.min(boardHeight(),Math.max(260,Math.min(460,(window.innerHeight||800)-(immersive?290:phone?410:300)-(level.garden>=2?42:0))));}
+function boardHeight(){return level.rows*80+155;}
+function playWindowHeight(){const immersive=document.body?.classList?.contains?.('immersive'),phone=(window.innerWidth||800)<600;return Math.min(boardHeight(),Math.max(arrival?160:260,Math.min(460,(window.innerHeight||800)-(immersive?290:phone?410:300)-(level.garden>=2?42:0))));}
 let cameraTile,cameraTarget;
 function followRabbit(smooth=true){
  const frame=$('playfield'),n=current(),p=position(n),height=parseFloat(frame.style.height)||playWindowHeight();
@@ -170,10 +170,11 @@ function followRabbit(smooth=true){
 }
 function position(n){return {x:n.r<0&&level.garden===0?50:(n.c+1)*100/(level.count+1),y:boardHeight()-40-(n.r+1)*80};}
 const bunny = '<svg viewBox="0 0 50 60" aria-hidden="true"><ellipse cx="18" cy="17" rx="5" ry="15" fill="#fff9e9" stroke="#bcbfa6"/><ellipse cx="32" cy="15" rx="5" ry="15" fill="#fff9e9" stroke="#bcbfa6"/><path d="M18 7v15M32 5v15" stroke="#e4b5a2" stroke-width="3" stroke-linecap="round"/><ellipse cx="25" cy="43" rx="16" ry="15" fill="#fff9e9" stroke="#bcbfa6"/><ellipse cx="25" cy="31" rx="17" ry="14" fill="#fff9e9" stroke="#bcbfa6"/><circle cx="19" cy="30" r="1.6" fill="#3f5946"/><circle cx="31" cy="30" r="1.6" fill="#3f5946"/><path d="m23 34 2 2 2-2" fill="#cf9686"/><circle cx="15" cy="35" r="3" fill="#edc8af"/><circle cx="35" cy="35" r="3" fill="#edc8af"/><ellipse cx="16" cy="55" rx="7" ry="3" fill="#fff9e9"/><ellipse cx="34" cy="55" rx="7" ry="3" fill="#fff9e9"/></svg>';
-function load(index){if(!Number.isInteger(index)||index<0||index>=TOTAL_LEVELS||!unlockedGarden(Math.floor(index/12)))return false;clearTimeout(animationTimer);clearTimeout(feedbackTimer);levelIndex=index;level=makeLevel(index);path=[level.start];combo=0;$('rabbit').innerHTML=bunny;$('rabbit').classList.remove('hopping');render(false);persist();if(!tutorialsSeen[level.garden]||level.garden>=2&&!comboSeen)showLesson();return true;}
+function load(index){if(!Number.isInteger(index)||index<0||index>=TOTAL_LEVELS||!unlockedGarden(Math.floor(index/12)))return false;clearTimeout(animationTimer);clearTimeout(feedbackTimer);levelIndex=index;level=makeLevel(index);path=[level.start];combo=0;arrival=null;$('arrival-panel').hidden=true;$('rabbit').classList.remove('celebrating');$('rabbit').innerHTML=bunny;$('rabbit').classList.remove('hopping');render(false);persist();if(!tutorialsSeen[level.garden]||level.garden>=2&&!comboSeen)showLesson();return true;}
 function showLesson(g=level.garden,preview=false){window.TileHopLessons?.show(g,{bunny,icon:mechanicIcon,onSound:cue,onDone:()=>{if(preview){showLevels(g);return;}tutorialsSeen[g]=true;if(g>=2)comboSeen=true;persist();}});}
 function render(smooth=true){
  const garden=GARDENS[level.garden];
+ $('arrival-panel').hidden=!arrival;$('instruction').hidden=!!arrival;$('hop-controls').hidden=!!arrival;
  $('level-title').textContent=title(levelIndex);$('chapter').textContent=`${level.garden+1} / ${GARDENS.length} · ${garden.name.toUpperCase()}`;$('levels').textContent=`${String(levelIndex%12+1).padStart(2,'0')} / 12`;
  $('garden-rule').textContent=garden.rule;$('garden-progress').textContent=`${Array.from({length:12},(_,i)=>completed(level.garden*12+i)).filter(Boolean).length} of 12 climbs complete`;
  const n=current(),board=$('board');board.innerHTML='';$('playfield').style.height=playWindowHeight()+'px';board.style.height=boardHeight()+'px';$('playfield').dataset.theme=garden.theme;$('playfield').dataset.columns=String(level.count);
@@ -202,7 +203,7 @@ function render(smooth=true){
  const stuck=choices(n).length===0&&n.r<level.rows-1;
  $('prompt').textContent=finished?'You made it to the top!':stuck?'A little detour!':path.length===1&&levelIndex===0?'Tap a flower to hop':'Find a '+SYMBOL_NAMES[n.next];
  $('subprompt').textContent=finished?'Enjoy the view. Your climb is complete.':stuck?'Undo a hop and try another path.':n.spring?'Spring hop! Match two rows above.':level.garden>=2?`⚿ ${keyCount()} ${keyCount()===1?'key':'keys'} ${level.garden>=5?'available · Copper gates spend keys.':'collected · ▣ gates need keys.'}`:level.garden===1?'Stay nearby: at most one column sideways.':'Small symbol = your next match. ✦ = bonus star.';
- const frame=$('playfield').getBoundingClientRect?.();if(frame&&window.innerHeight){const lower=['.instruction','.controls','.game-tools'].reduce((sum,selector)=>sum+(document.querySelector(selector)?.getBoundingClientRect?.().height||0),0);$('playfield').style.height=Math.min(boardHeight(),Math.max(260,Math.min(460,window.innerHeight-Math.max(0,frame.top)-lower-8)))+'px';}
+ const frame=$('playfield').getBoundingClientRect?.();if(frame&&window.innerHeight){const lower=['.instruction','.controls','.arrival-panel'].reduce((sum,selector)=>sum+(document.querySelector(selector)?.getBoundingClientRect?.().height||0),0);$('playfield').style.height=Math.min(boardHeight(),Math.max(arrival?160:260,Math.min(460,window.innerHeight-Math.max(0,frame.top)-lower-8)))+'px';}
  followRabbit(smooth);
  updateCombo();
 }
@@ -226,18 +227,29 @@ function close(){ $('dialog').close(); }
 function win(){
  animationTimer=undefined;
  const stars=path.filter(t=>t.star).length,g=level.garden,wasComplete=gardenComplete(g),wasGameComplete=GARDENS.every((_,i)=>gardenComplete(i));
- records[levelIndex]=Math.max(Number(records[levelIndex])||0,stars);if(!stats.dirty[levelIndex])stats.flawless[levelIndex]=true;delete stats.dirty[levelIndex];persist();render();celebrate();
- if(!wasGameComplete&&GARDENS.every((_,i)=>gardenComplete(i))){showFinale();return;}
- if(!wasComplete&&gardenComplete(g)){showGardenWin(g);return;}
- cue('complete');
+ records[levelIndex]=Math.max(Number(records[levelIndex])||0,stars);if(!stats.dirty[levelIndex])stats.flawless[levelIndex]=true;delete stats.dirty[levelIndex];persist();
+ const finale=!wasGameComplete&&GARDENS.every((_,i)=>gardenComplete(i)),garden=!wasComplete&&gardenComplete(g);
+ arrival=finale?'finale':garden?'garden':'level';
  const next=Array.from({length:12},(_,i)=>g*12+i).find(i=>!completed(i));
- modal(`<div class="big-icon">${GARDENS[g].icon}</div><div class="eyebrow">A LITTLE MOMENT TO CELEBRATE</div><h2>Look how far you hopped.</h2><p>You reached the top of ${title(levelIndex).toLowerCase()}! ${stars?`You found ${stars===1?'a little star':`${stars} little stars`} along the way. `:''}Another little adventure is waiting.</p><button class="primary" id="next-level">${next===undefined?'Explore the gardens':'Next little climb →'}</button><button class="secondary" id="again">Try another route</button>`);
- $('next-level').onclick=()=>{close();next===undefined?showLevels():load(next);};$('again').onclick=()=>{close();load(levelIndex);};
+ const nextGarden=next===undefined&&g<GARDENS.length-1&&unlockedGarden(g+1);
+ const heading=finale?'CONGRATULATIONS!':garden?`${GARDENS[g].name} complete!`:'Home, sweet home!';
+ const message=finale?`You beat Tile Hop! All ${TOTAL_LEVELS} levels and ${GARDENS.length} gardens complete.`:garden?`NEW GARDEN UNLOCKED · ${GARDENS[g+1]?.name||'Every garden is blooming!'}`:`A lovely climb${stars?` · ${stars} little ${stars===1?'star':'stars'} found`:''}.`;
+ $('arrival-panel').innerHTML=`<div class="eyebrow">${finale?'EVERY GARDEN IS BLOOMING':garden?'A WHOLE GARDEN, BEAUTIFULLY DONE':'YOU MADE IT HOME'}</div><h2>${heading}</h2><p>${message}</p><button class="primary" id="next-level">${finale?'Explore the gardens':next!==undefined?'Next little climb →':nextGarden?'Enter the next garden →':'Explore the gardens'}</button>`;
+ $('next-level').onclick=()=>{if(finale||next===undefined&&!nextGarden){showLevels();return;}load(next!==undefined?next:firstUnfinished(g+1));};
+ render();
+ const rabbit=$('rabbit');rabbit.classList.remove('hopping');rabbit.classList.add('celebrating');
+ rabbit.innerHTML=bunny.replace('<circle cx="19" cy="30" r="1.6" fill="#3f5946"/><circle cx="31" cy="30" r="1.6" fill="#3f5946"/>','<path d="M16 30q3-4 6 0M28 30q3-4 6 0" fill="none" stroke="#3f5946" stroke-width="1.8" stroke-linecap="round"/>').replace('<path d="m23 34 2 2 2-2" fill="#cf9686"/>','<path d="m23 33 2 2 2-2" fill="#cf9686"/><path d="M21 36q4 5 8 0" fill="none" stroke="#795b51" stroke-width="1.5" stroke-linecap="round"/>');
+ confettiBurst();cue(finale?'finale':garden?'garden':'complete');
+ $('announcement').textContent=heading+' '+message;
 }
-function showGardenWin(g){
- cue('garden');
- modal(`<div class="garden-celebration"><div class="big-icon">${GARDENS[g].icon}</div><div class="eyebrow">ALL 12 CLIMBS COMPLETE</div><h2>${GARDENS[g].name} complete!</h2><p>${GARDENS[g].message}</p>${g<GARDENS.length-1?`<div class="unlock-card"><span>NEW GARDEN UNLOCKED</span><strong>${GARDENS[g+1].icon} ${GARDENS[g+1].name}</strong><p>${GARDENS[g+1].rule}</p></div>`:''}<button class="primary" id="next-garden">${g<GARDENS.length-1?'Enter the next garden →':'Explore the gardens'}</button><button class="secondary" id="garden-map">View your adventure</button></div>`);
- $('next-garden').onclick=()=>{close();g<GARDENS.length-1?load(firstUnfinished(g+1)):showLevels();};$('garden-map').onclick=showLevels;
+function confettiBurst(){
+ if(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)return;
+ const p=position(current()),colors=['#ce8a64','#a6b875','#caa24d','#9b9dcc','#7baca4'];
+ for(let i=0;i<40;i++){
+  const piece=document.createElement('span');piece.className='party-confetti';piece.style.left=p.x+'%';piece.style.top=(p.y-25)+'px';piece.style.background=colors[i%colors.length];
+  piece.style.setProperty?.('--dx',(Math.random()-.5)*290+'px');piece.style.setProperty?.('--rise',(-35-Math.random()*90)+'px');piece.style.setProperty?.('--fall',(65+Math.random()*100)+'px');piece.style.setProperty?.('--spin',(Math.random()-.5)*900+'deg');piece.style.animationDelay=Math.random()*.12+'s';
+  $('playfield').append(piece);setTimeout(()=>piece.remove(),1700);
+ }
 }
 function showFinale(){
  cue('finale');
@@ -282,7 +294,7 @@ function warnReset(){
  };
  $('cancel-reset').focus?.({preventScroll:true});
 }
-$('undo').onclick=()=>{if(path.length===1)return;stats.undoUses++;markError();clearTimeout(animationTimer);clearTimeout(feedbackTimer);path.pop();render();tone(300,.08);};$('restart').onclick=warnRestart;
+$('undo').onclick=()=>{if(path.length===1)return;stats.undoUses++;markError();clearTimeout(animationTimer);clearTimeout(feedbackTimer);path.pop();arrival=null;$('rabbit').classList.remove('celebrating');$('rabbit').innerHTML=bunny;render();tone(300,.08);};$('restart').onclick=warnRestart;
 $('options').onclick=showOptions;
 $('hint').onclick=()=>{const route=bestRoute(current());if(!route){$('prompt').textContent='Try undoing your last hop';$('announcement').textContent='This path cannot reach the top. Undo your last hop.';return;}const next=route.route[0];if(next){document.querySelector(`[data-id="${next.id}"]`).classList.add('hinted');$('prompt').textContent='This tile leads toward home';}};
 $('levels').onclick=()=>showLevels();

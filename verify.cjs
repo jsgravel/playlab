@@ -26,7 +26,7 @@ function finish(index){
   context.hop(tile);assert.equal(api.getState().path.at(-1).id,tile.id,'Moves commit immediately without waiting for animation');keys+=(tile.key?1:0)-(tile.spend?tile.lock:0);assert.equal(vm.runInContext('keyCount()',context),keys);
  }
  assert.equal(api.getState().path.at(-1).r,state.level.rows-1);app.flush();assert.ok(Object.hasOwn(app.storage().records,index));
- const content=document.getElementById('dialog-content').innerHTML;assert.ok(!/\d+ of \d+ stars/.test(content));document.getElementById('dialog').close();return content;
+ const content=document.getElementById('arrival-panel').innerHTML;assert.ok(!document.getElementById('dialog').open,'Finishing keeps the board visible instead of opening a modal');assert.ok(!/\d+ of \d+ stars/.test(content));document.getElementById('dialog').close();return content;
 }
 finish(11);assert.equal(api.unlockedGarden(1),false,'Completing level 12 alone does not unlock garden 2');
 for(let i=0;i<11;i++){const content=finish(i);if(i===10){assert.ok(content.includes('Clover Garden complete!'));assert.ok(content.includes('Willow Walk'));}}
@@ -153,4 +153,16 @@ console.log('PASS: smooth camera scheduling, rapid-hop retargeting, stable repai
  pending.options.onDone();assert.equal(preview.storage().tutorialsSeen[5],undefined,'Previewing a locked garden does not acknowledge its later intro');
  assert.equal(preview.api.unlockedGarden(5),false,'A tutorial preview does not unlock levels');assert.equal(preview.document.getElementById('dialog').dataset.view,'map');
  console.log('PASS: locked garden lesson previews return to the trail without changing unlocks or tutorial acknowledgements.');
+}
+
+{
+ const party=boot(),solution=party.api.bestRoute(party.api.getState().level.start).route;
+ for(const tile of solution)party.context.hop(tile);party.flush();
+ assert.equal(party.document.getElementById('arrival-panel').hidden,false);assert.equal(party.document.getElementById('hop-controls').hidden,true);
+ assert.match(party.document.getElementById('rabbit').innerHTML,/M21 36q4 5 8 0/,'The rabbit wears a smile at home');
+ assert.equal(party.api.getState().path.at(-1).r,party.api.getState().level.rows-1,'Celebration keeps the final landing');
+ party.document.getElementById('next-level').onclick();assert.equal(party.api.getState().levelIndex,1);assert.equal(party.document.getElementById('arrival-panel').hidden,true);assert.equal(party.document.getElementById('hop-controls').hidden,false);
+ party.context.window.matchMedia=()=>({matches:true});let count=party.document.getElementById('playfield').children.filter(p=>p.className==='party-confetti').length;
+ vm.runInContext('confettiBurst()',party.context);assert.equal(party.document.getElementById('playfield').children.filter(p=>p.className==='party-confetti').length,count,'Reduced motion suppresses the burst');
+ console.log('PASS: inline finish, smiling rabbit, retained landing, Next action, restored hop controls, and reduced-motion celebration.');
 }

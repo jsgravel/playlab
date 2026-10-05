@@ -69,3 +69,10 @@ html:has(dialog[open]),body:has(dialog[open]){overflow:hidden}
 @media(max-height:600px){#dialog[data-view="map"]{padding:12px}#dialog[data-view="map"] .garden-tabs.garden-cards{margin:7px 0}#dialog[data-view="map"] h2{font-size:23px}#dialog[data-view="map"] .level-grid{gap:5px;margin:8px 0}#dialog[data-view="map"] .level-grid button{min-height:44px}}
 
 .garden-medals{flex-wrap:wrap}@media(max-width:400px){.garden-medals{gap:6px;margin:14px 0}.garden-medals span{width:30px;height:30px;font-size:18px}}
+
+.arrival-panel{padding:12px 16px;text-align:center;border-top:1px solid #d6ddcc;background:linear-gradient(#f2f4df,#fffcf3)}.arrival-panel[hidden],.instruction[hidden],.controls[hidden]{display:none}
+.arrival-panel .eyebrow{font-size:8px;letter-spacing:1px}.arrival-panel h2{font-size:22px;margin:5px 0}.arrival-panel p{font-size:11px;line-height:1.4;margin:5px 0}.arrival-panel .primary{min-height:44px;padding:11px;margin-top:5px;font-size:12px}.arrival-link{display:block;margin:4px auto 0;min-height:28px;border:0;background:none;font-size:10px;color:#728569;padding:4px}
+.playfield .rabbit.celebrating{animation:rabbit-dance .7s ease-in-out 4;filter:drop-shadow(0 0 8px #e3c779)}
+@keyframes rabbit-dance{0%,100%{rotate:0deg;translate:0 0}25%{rotate:-9deg;translate:0 -9px}50%{rotate:0deg;translate:0 -3px}75%{rotate:9deg;translate:0 -9px}}
+.party-confetti{position:absolute;z-index:9;pointer-events:none;width:6px;height:9px;border-radius:2px;animation:party-burst 1.45s cubic-bezier(.2,.7,.3,1) both}
+@keyframes party-burst{0%{transform:translate(0,0) rotate(0);opacity:0}10%{opacity:1}45%{transform:translate(calc(var(--dx)*.65),var(--rise)) rotate(calc(var(--spin)*.5))}100%{transform:translate(var(--dx),var(--fall)) rotate(var(--spin));opacity:0}}
