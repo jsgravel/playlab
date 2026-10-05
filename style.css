@@ -44,3 +44,18 @@
 
 html:has(dialog[open]),body:has(dialog[open]){overflow:hidden}
 @media(max-width:360px){#dialog[data-view="map"]{padding:12px}}
+
+#lesson-dialog{padding:14px;width:min(390px,calc(100% - 24px));max-height:calc(100dvh - 24px)}
+#lesson-dialog .eyebrow{font-size:8px;letter-spacing:1px;line-height:1.4}
+#lesson-dialog h2{font-size:22px;line-height:1.15;margin:6px 0}
+#lesson-dialog #lesson-content>p{font-size:11px;line-height:1.4;margin:6px 0}
+#lesson-dialog .lesson-scene{height:clamp(174px,32dvh,240px);margin:10px 0}
+#lesson-dialog .lesson-tile{width:44px;height:34px;font-size:22px;border-bottom-width:3px}
+#lesson-dialog .lesson-tile small{font-size:9px;right:3px}
+#lesson-dialog .lesson-tile b{top:-10px;left:-5px;display:flex;align-items:center;background:#f6edce;border:1px solid #c8b87f;border-radius:5px;padding:1px}
+#lesson-dialog .lesson-tile b svg{width:12px;height:12px}
+#lesson-dialog .lesson-rabbit{width:30px;height:35px}
+#lesson-dialog .lesson-tip{min-height:40px;padding:8px;font-size:11px!important}
+#lesson-dialog .lesson-actions button,#lesson-dialog .primary{padding:10px;min-height:44px;margin-top:6px;font-size:11px}
+#lesson-dialog .lesson-note{font-size:9px!important;margin-bottom:0!important}
+@media(max-height:520px) and (min-width:600px){#lesson-dialog{width:min(660px,calc(100% - 24px))}#lesson-content{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px}#lesson-content>.eyebrow,#lesson-content>h2,#lesson-content>p:not(.lesson-tip):not(.lesson-note){grid-column:2}#lesson-dialog .lesson-scene{grid-column:1;grid-row:1/7;height:260px;margin:0}#lesson-content>.lesson-actions,#lesson-content>.primary,#lesson-content>.lesson-tip{grid-column:2}#lesson-dialog .lesson-note{grid-column:1/-1}}
