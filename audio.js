@@ -93,8 +93,18 @@
   garden:[[60,0,.28,'harp'],[67,.1,.3,'harp'],[72,.2,.35,'bell'],[76,.3,.35,'bell'],[84,.45,.5,'bell']],
   finale:[[60,0,.35,'harp'],[64,0,.35,'harp'],[67,.12,.35,'harp'],[72,.24,.35,'bell'],[76,.36,.4,'bell'],[79,.48,.4,'bell'],[84,.65,.65,'bell']]
  };
- async function cue(name){
-  const notes=cues[name],token=effectsGeneration;if(!notes||!effects||effectsVolume===0||document.hidden)return;
+ function cue(name){return playCue(cues[name]);}
+ function combo(streak){
+  if(!Number.isInteger(streak)||streak<1)return;
+  const scale=[60,62,64,67,69,72,74,76],pitch=scale[Math.min(streak-1,scale.length-1)];
+  const notes=[[pitch,0,.2,'harp',.035]];
+  if(streak>=3)notes.push([pitch-12,.015,.24,'piano',.019]);
+  if(streak>=6)notes.push([pitch-5,.045,.26,'harp',.018]);
+  if(streak>=10)notes.push([pitch+4,.075,.3,'bell',.014]);
+  return playCue(notes);
+ }
+ async function playCue(notes){
+  const token=effectsGeneration;if(!notes||!effects||effectsVolume===0||document.hidden)return;
   if((!ctx||ctx.state!=='running')&&!await unlock())return;
   if(!effects||token!==effectsGeneration||document.hidden)return;
   ramp(effectsBus,effectsVolume);
@@ -115,5 +125,5 @@
  document.addEventListener('keydown',()=>{if(music&&!unlocked)start();},{once:true});
  document.addEventListener('visibilitychange',()=>{if(document.hidden){stop();if(ctx)ctx.suspend();}else if(music&&unlocked)start();});
  window.addEventListener('pagehide',()=>{stop();if(ctx)ctx.suspend();});
- ui();window.TileHopAudio={effect,cue,tracks};
+ ui();window.TileHopAudio={effect,cue,combo,tracks};
 })();

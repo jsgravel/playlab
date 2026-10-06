@@ -23,8 +23,19 @@ let tutorialsSeen=saved.tutorialsSeen&&typeof saved.tutorialsSeen==='object'?sav
 function validCount(value){return Number.isSafeInteger(value)&&value>=0?value:0;}
 function levelFlags(value){return Object.fromEntries(Object.entries(value&&typeof value==='object'?value:{}).filter(([key,v])=>Number.isInteger(Number(key))&&Number(key)>=0&&Number(key)<TOTAL_LEVELS&&v===true));}
 const storedStats=saved.stats&&typeof saved.stats==='object'?saved.stats:{};
-let stats={undoUses:validCount(storedStats.undoUses),restarts:validCount(storedStats.restarts),bestCombo:validCount(storedStats.bestCombo),flawless:levelFlags(storedStats.flawless),dirty:levelFlags(storedStats.dirty)};
+let stats={undoUses:validCount(storedStats.undoUses),restarts:validCount(storedStats.restarts),bestCombo:validCount(storedStats.bestCombo),failedHard:validCount(storedStats.failedHard),easyRestarts:validCount(storedStats.easyRestarts),hardRestarts:validCount(storedStats.hardRestarts),flawless:levelFlags(storedStats.flawless),dirty:levelFlags(storedStats.dirty)};
 let combo=0,comboSeen=saved.comboSeen===true;
+let assistSeen=saved.assistSeen&&typeof saved.assistSeen==='object'?saved.assistSeen:{};
+let hardAttempts=saved.hardAttempts&&typeof saved.hardAttempts==='object'?saved.hardAttempts:{},attempt=null;
+function assistLimits(g=level?.garden){return g===5?{undo:3,hint:2}:g===6?{undo:2,hint:1}:null;}
+function recordHardFailure(){if(!attempt||attempt.failed)return;attempt.failed=true;stats.failedHard++;stats.dirty[levelIndex]=true;combo=0;}
+function showFailure(reason){
+ recordHardFailure();clearTimeout(animationTimer);clearTimeout(feedbackTimer);arrival='failed';
+ $('arrival-panel').innerHTML=`<div class="eyebrow">HARD CLIMB · ATTEMPT ENDED</div><h2>A fresh start?</h2><p>${reason} This attempt counts as a failed hard level.</p><button class="primary" id="retry-hard">Restart this level →</button>`;
+ $('retry-hard').onclick=()=>{stats.restarts++;stats.hardRestarts++;load(levelIndex,true);};render();persist();
+}
+function checkNoRecovery(){if(attempt&&!attempt.failed&&attempt.undoLeft===0&&current().r<level.rows-1&&choices(current()).length===0)showFailure('This route has no matching exit, and no undos remain.');}
+
 function markError(){stats.dirty[levelIndex]=true;combo=0;updateCombo();persist();}
 let level, path, animationTimer, feedbackTimer,arrival=null;
 function updateCombo(){if(!level)return;const active=level.garden>=2,tier=combo>=10?'starlight':combo>=6?'bloom':combo>=3?'bud':'seed';$('combo-bar').hidden=!active;$('combo-count').textContent=combo+'×';$('combo-label').textContent=combo>=10?'Starlight flow':combo>=6?'In full bloom':combo>=3?'Finding your rhythm':combo?'A lovely start':'A fresh little streak';$('combo-bar').dataset.tier=tier;$('playfield').dataset.combo=active?tier:'seed';}
@@ -170,8 +181,21 @@ function followRabbit(smooth=true){
 }
 function position(n){return {x:n.r<0&&level.garden===0?50:(n.c+1)*100/(level.count+1),y:boardHeight()-40-(n.r+1)*80};}
 const bunny = '<svg viewBox="0 0 50 60" aria-hidden="true"><ellipse cx="18" cy="17" rx="5" ry="15" fill="#fff9e9" stroke="#bcbfa6"/><ellipse cx="32" cy="15" rx="5" ry="15" fill="#fff9e9" stroke="#bcbfa6"/><path d="M18 7v15M32 5v15" stroke="#e4b5a2" stroke-width="3" stroke-linecap="round"/><ellipse cx="25" cy="43" rx="16" ry="15" fill="#fff9e9" stroke="#bcbfa6"/><ellipse cx="25" cy="31" rx="17" ry="14" fill="#fff9e9" stroke="#bcbfa6"/><circle cx="19" cy="30" r="1.6" fill="#3f5946"/><circle cx="31" cy="30" r="1.6" fill="#3f5946"/><path d="m23 34 2 2 2-2" fill="#cf9686"/><circle cx="15" cy="35" r="3" fill="#edc8af"/><circle cx="35" cy="35" r="3" fill="#edc8af"/><ellipse cx="16" cy="55" rx="7" ry="3" fill="#fff9e9"/><ellipse cx="34" cy="55" rx="7" ry="3" fill="#fff9e9"/></svg>';
-function load(index){if(!Number.isInteger(index)||index<0||index>=TOTAL_LEVELS||!unlockedGarden(Math.floor(index/12)))return false;clearTimeout(animationTimer);clearTimeout(feedbackTimer);levelIndex=index;level=makeLevel(index);path=[level.start];combo=0;arrival=null;$('arrival-panel').hidden=true;$('rabbit').classList.remove('celebrating');$('rabbit').innerHTML=bunny;$('rabbit').classList.remove('hopping');render(false);persist();if(!tutorialsSeen[level.garden]||level.garden>=2&&!comboSeen)showLesson();return true;}
-function showLesson(g=level.garden,preview=false){window.TileHopLessons?.show(g,{bunny,icon:mechanicIcon,onSound:cue,onDone:()=>{if(preview){showLevels(g);return;}tutorialsSeen[g]=true;if(g>=2)comboSeen=true;persist();}});}
+function load(index,fresh=false){
+ if(!Number.isInteger(index)||index<0||index>=TOTAL_LEVELS||!unlockedGarden(Math.floor(index/12)))return false;
+ clearTimeout(animationTimer);clearTimeout(feedbackTimer);levelIndex=index;level=makeLevel(index);path=[level.start];combo=0;arrival=null;
+ const limits=assistLimits();attempt=null;
+ if(limits){
+  const old=!fresh&&hardAttempts[index];
+  attempt={undoLeft:Number.isInteger(old?.undoLeft)?Math.max(0,Math.min(limits.undo,old.undoLeft)):limits.undo,hintLeft:Number.isInteger(old?.hintLeft)?Math.max(0,Math.min(limits.hint,old.hintLeft)):limits.hint,failed:old?.failed===true,hintFor:typeof old?.hintFor==='string'?old.hintFor:null};
+  if(Array.isArray(old?.pathIds))for(const id of old.pathIds.slice(0,40)){const tile=level.nodes.find(t=>t.id===id);if(!tile||!reachable(current(),tile)||tile.entry!==current().next)break;path.push(tile);}
+ }
+ $('arrival-panel').hidden=true;$('rabbit').classList.remove('celebrating');$('rabbit').innerHTML=bunny;$('rabbit').classList.remove('hopping');
+ if(attempt?.failed)showFailure('This hard-level attempt has ended. Restart to refill your assists.');else{render(false);persist();}
+ if(!attempt?.failed&&(!tutorialsSeen[level.garden]||level.garden>=2&&!comboSeen||limits&&!assistSeen[level.garden]))showLesson();
+ return true;
+}
+function showLesson(g=level.garden,preview=false){window.TileHopLessons?.show(g,{bunny,icon:mechanicIcon,onSound:cue,onDone:()=>{if(preview){showLevels(g);return;}tutorialsSeen[g]=true;if(g>=2)comboSeen=true;if(g>=5)assistSeen[g]=true;persist();}});}
 function render(smooth=true){
  const garden=GARDENS[level.garden];
  $('arrival-panel').hidden=!arrival;$('instruction').hidden=!!arrival;$('hop-controls').hidden=!!arrival;
@@ -182,10 +206,11 @@ function render(smooth=true){
   const p=position(tile),b=document.createElement('button');b.className='tile'+(tile.spend?' copper-gate':'')+(tile.r<n.r?' past':'')+(tile.id===n.id?' current':'');b.style.left=p.x+'%';b.style.top=p.y+'px';b.dataset.id=tile.id;
   const isFinish=tile.r===level.rows-1;
   if(isFinish)b.classList.add('finish-tile');
-  const gateOpened=tile.lock&&path.some(t=>t.id===tile.id);
-  b.innerHTML=symbolHTML(tile.id===n.id&&!isFinish?tile.next:tile.entry)+(tile.id===n.id||isFinish?'':symbolHTML(tile.next,'next'))+(tile.star?'<span class="star">✦</span>':'')+((tile.key||tile.lock||tile.spring)?`<span class="mechanic has-icon">${tile.key?mechanicIcon('key'):''}${tile.lock?mechanicIcon(gateOpened?'open':'lock')+`<small>${tile.spend?'−':''}${tile.lock}</small>`:''}${tile.spring?'↑↑':''}</span>`:'');
+  const gateOpened=tile.lock&&path.some(t=>t.id===tile.id),gateReady=tile.lock&&keyCount()>=tile.lock;
+  if(gateOpened||gateReady)b.classList.add('gate-ready');
+  b.innerHTML=symbolHTML(tile.id===n.id&&!isFinish?tile.next:tile.entry)+(tile.id===n.id||isFinish?'':symbolHTML(tile.next,'next'))+(tile.star?'<span class="star">✦</span>':'')+((tile.key||tile.lock||tile.spring)?`<span class="mechanic has-icon">${tile.key?mechanicIcon('key'):''}${tile.lock?mechanicIcon(gateOpened||gateReady?'open':'lock')+`<small>${tile.spend?'−':''}${tile.lock}</small>`:''}${tile.spring?'↑↑':''}</span>`:'');
   if(gateOpened&&tile.id===n.id)b.classList.add('gate-opened');
-  b.setAttribute('aria-label',`${SYMBOL_NAMES[tile.entry]} tile${isFinish?', finish':`, next match ${SYMBOL_NAMES[tile.next]}`}${tile.star?', with star':''}${tile.key?', collect a key':''}${tile.lock?`, requires ${tile.lock} keys${tile.spend?', spends these keys':''}`:''}${tile.spring?', spring: next jump skips one row':''}`);
+  b.setAttribute('aria-label',`${SYMBOL_NAMES[tile.entry]} tile${isFinish?', finish':`, next match ${SYMBOL_NAMES[tile.next]}`}${tile.star?', with star':''}${tile.key?', collect a key':''}${tile.lock?`, ${gateOpened?'opened':gateReady?'ready to open':'locked'}, requires ${tile.lock} keys${tile.spend?', spends these keys':''}`:''}${tile.spring?', spring: next jump skips one row':''}`);
   const inRow=tile.r===n.r+(n.spring?2:1),nearby=level.garden===0||Math.abs(tile.c-n.c)<=1;
   b.disabled=!inRow||!nearby;
   if(n.spring&&tile.r===n.r+1)b.classList.add('spring-skipped');
@@ -199,29 +224,34 @@ function render(smooth=true){
  const rabbit=$('rabbit'),p=position(n);rabbit.style.left=p.x+'%';rabbit.style.top=(p.y-19)+'px';
  const finished=n.r===level.rows-1;
  $('progress').style.width=((n.r+1)/level.rows*100)+'%';$('match').innerHTML=finished?'✦':symbolHTML(n.next);$('stars').textContent=path.filter(t=>t.star).length;$('undo').disabled=path.length===1;
+ $('undo').innerHTML='↶ <span>Undo'+(attempt?` · ${attempt.undoLeft}`:'')+'</span>';$('hint').innerHTML='☀ <span>Hint'+(attempt?` · ${attempt.hintLeft}`:'')+'</span>';
+ $('undo').setAttribute('aria-label',attempt?`Undo, ${attempt.undoLeft} remaining`:'Undo');$('hint').setAttribute('aria-label',attempt?`Hint, ${attempt.hintLeft} remaining`:'Hint');
+ $('assist-status').hidden=!attempt||!!arrival;$('assist-status').textContent=attempt?`Hard climb · ${attempt.undoLeft} undos / ${attempt.hintLeft} hints left · Need more? Restart required.`:'';
  $('keys').innerHTML=mechanicIcon('key')+`<strong>${keyCount()}</strong>`;$('keys').hidden=level.garden<2;$('keys').setAttribute('aria-label',`${keyCount()} keys available`);
  const stuck=choices(n).length===0&&n.r<level.rows-1;
  $('prompt').textContent=finished?'You made it to the top!':stuck?'A little detour!':path.length===1&&levelIndex===0?'Tap a flower to hop':'Find a '+SYMBOL_NAMES[n.next];
  $('subprompt').textContent=finished?'Enjoy the view. Your climb is complete.':stuck?'Undo a hop and try another path.':n.spring?'Spring hop! Match two rows above.':level.garden>=2?`⚿ ${keyCount()} ${keyCount()===1?'key':'keys'} ${level.garden>=5?'available · Copper gates spend keys.':'collected · ▣ gates need keys.'}`:level.garden===1?'Stay nearby: at most one column sideways.':'Small symbol = your next match. ✦ = bonus star.';
- const frame=$('playfield').getBoundingClientRect?.();if(frame&&window.innerHeight){const lower=['.instruction','.controls','.arrival-panel'].reduce((sum,selector)=>sum+(document.querySelector(selector)?.getBoundingClientRect?.().height||0),0);$('playfield').style.height=Math.min(boardHeight(),Math.max(arrival?160:260,Math.min(460,window.innerHeight-Math.max(0,frame.top)-lower-8)))+'px';}
+ const frame=$('playfield').getBoundingClientRect?.();if(frame&&window.innerHeight){const lower=['.instruction','.controls','.arrival-panel','#assist-status'].reduce((sum,selector)=>sum+(document.querySelector(selector)?.getBoundingClientRect?.().height||0),0);$('playfield').style.height=Math.min(boardHeight(),Math.max(arrival?160:260,Math.min(460,window.innerHeight-Math.max(0,frame.top)-lower-8)))+'px';}
  followRabbit(smooth);
  updateCombo();
 }
 function hop(tile){
+ if(attempt?.failed||arrival)return;
  const n=current();if(tile.r!==n.r+(n.spring?2:1)||level.garden>0&&Math.abs(tile.c-n.c)>1)return;
  if(tile.lock&&keyCount()<tile.lock){markError();$('prompt').textContent=`This gate needs ${tile.lock} ${tile.lock===1?'key':'keys'}`;$('subprompt').textContent=level.garden>=5?'Undo to the fork. Check the keys collected and spent on each route.':'Undo and take a path through a key tile ⚿.';$('announcement').textContent=$('prompt').textContent;cue('locked');return;}
  if(tile.entry!==n.next){markError();const b=document.querySelector(`[data-id="${tile.id}"]`);b.classList.remove('wrong');void b.offsetWidth;b.classList.add('wrong');$('prompt').textContent='Look for the same symbol';clearTimeout(feedbackTimer);feedbackTimer=setTimeout(render,1100);tone(160,.08);return;}
  clearTimeout(feedbackTimer);clearTimeout(animationTimer);
  // Commit the move immediately. Animation is decoration, never an input lock.
- path.push(tile);if(level.garden>=2){combo++;stats.bestCombo=Math.max(stats.bestCombo,combo);persist();}render();const rabbit=$('rabbit');rabbit.classList.remove('hopping');void rabbit.offsetWidth;rabbit.classList.add('hopping');comboSparkles();
- if(n.spring)cue('spring');else if(tile.spend)cue('spend');else if(tile.lock)cue('unlock');else if(tile.key)cue('key');else if(tile.spring)cue('springReady');else if(tile.entry===4)cue('sun');else if(level.garden===1)cue('nearby');else tone(420+tile.r*65,.12);
+ path.push(tile);if(attempt)attempt.hintFor=null;if(level.garden>=2){combo++;stats.bestCombo=Math.max(stats.bestCombo,combo);persist();}render();const rabbit=$('rabbit');rabbit.classList.remove('hopping');void rabbit.offsetWidth;rabbit.classList.add('hopping');comboSparkles();
+ if(n.spring)cue('spring');else if(tile.spend)cue('spend');else if(tile.lock)cue('unlock');else if(tile.key)cue('key');else if(tile.spring)cue('springReady');else if(tile.entry===4)cue('sun');else if(level.garden===1)cue('nearby');else if(level.garden<2)tone(420+tile.r*65,.12);
+ if(level.garden>=2)window.TileHopAudio?.combo?.(combo);
  if(tile.key&&(n.spring||tile.lock))cue('key');if(tile.lock&&n.spring)cue('unlock');if(tile.star&&!tile.key&&!tile.lock)cue('star');
  $('announcement').textContent=`Row ${tile.r+1} of ${level.rows}. ${tile.key?'Key collected. ':''}${tile.spend?`${tile.lock} keys spent. `:''}${tile.star?'Star collected.':''}`;
  if(tile.star||tile.key)celebrate();
- if(tile.r===level.rows-1)animationTimer=setTimeout(win,180);
+ if(tile.r===level.rows-1)animationTimer=setTimeout(win,180);else checkNoRecovery();
 }
 function celebrate(){for(let i=0;i<8;i++){const s=document.createElement('span');s.className='confetti';s.textContent='✦';s.style.left=(25+Math.random()*50)+'%';s.style.top=(($('playfield').scrollTop||0)+60+Math.random()*150)+'px';$('playfield').append(s);setTimeout(()=>s.remove(),1100);}}
-function persist(){try{localStorage.setItem('tilehop-v1',JSON.stringify({level:levelIndex,records,tutorialsSeen,comboSeen,stats}));}catch(_){}}
+function persist(){if(level&&attempt){if(current().r===level.rows-1&&!attempt.failed)delete hardAttempts[levelIndex];else hardAttempts[levelIndex]={...attempt,pathIds:path.slice(1).map(t=>t.id)};}try{localStorage.setItem('tilehop-v1',JSON.stringify({level:levelIndex,records,tutorialsSeen,comboSeen,assistSeen,hardAttempts,stats}));}catch(_){}}
 function modal(html,view=''){$('dialog').dataset.view=view;$('dialog-content').innerHTML=html;if(!$('dialog').open)$('dialog').showModal();}
 function close(){ $('dialog').close(); }
 function win(){
@@ -275,14 +305,14 @@ function showOptions(){
 }
 function warnRestart(){
  finishPendingClimb();
- modal('<div class="eyebrow">TRY THIS CLIMB AGAIN?</div><h2>Restart this level?</h2><p>Your rabbit will return to the bottom of this climb and your current combo will reset. Completed levels and unlocked gardens stay saved.</p><p>This counts as one level restart in your stats.</p><button class="primary" id="cancel-restart" autofocus>Keep climbing</button><button class="secondary" id="confirm-restart">Yes, restart this level</button>');
- $('cancel-restart').onclick=close;$('confirm-restart').onclick=()=>{close();stats.restarts++;markError();load(levelIndex);};
+ modal('<div class="eyebrow">TRY THIS CLIMB AGAIN?</div><h2>Restart this level?</h2><p>Your rabbit will return to the bottom of this climb and your current combo will reset. Completed levels and unlocked gardens stay saved.</p><p>This counts as one level restart in your stats.</p><button class="primary" id="cancel-restart" autofocus>Keep climbing</button><button class="secondary" id="confirm-restart">Yes, restart this level</button>'.replace('This counts as one level restart in your stats.',attempt?'Restart refills your hints and undos. Abandoning an active hard climb counts as a failed hard level.':'This counts as one level restart in your stats.'));
+ $('cancel-restart').onclick=close;$('confirm-restart').onclick=()=>{close();stats.restarts++;if(attempt){stats.hardRestarts++;if(!arrival&&(path.length>1||attempt.hintLeft<assistLimits().hint))recordHardFailure();}else stats.easyRestarts++;markError();load(levelIndex,true);};
  $('cancel-restart').focus?.({preventScroll:true});
 }
 function showStats(){
  finishPendingClimb();
  const cleared=Array.from({length:TOTAL_LEVELS},(_,i)=>completed(i)).filter(Boolean).length;
- modal(`<div class="eyebrow">YOUR LITTLE ADVENTURE</div><h2>Your stats.</h2><div class="stats-grid"><div><strong>${stats.undoUses}</strong><span>Undo uses</span></div><div><strong>${stats.restarts}</strong><span>Level restarts</span></div><div><strong>${Object.keys(stats.flawless).length}</strong><span>Flawless levels</span></div><div><strong>${cleared} / ${TOTAL_LEVELS}</strong><span>Levels completed</span></div><div><strong>${stats.bestCombo}×</strong><span>Best combo · Lantern Orchard onward</span></div></div><p>A flawless level is a climb completed without a wrong match, blocked-gate tap, undo, or restart. Each level counts once; a clean replay can earn its flawless mark.</p><p>Hints are welcome and do not count as mistakes. These stats started tracking with this update; earlier clears keep their progress, but have no recorded flawless result.</p><button class="secondary" id="reset-from-stats">Back to options</button><button class="primary" id="close">Back to the garden</button>`);
+ modal(`<div class="eyebrow">YOUR LITTLE ADVENTURE</div><h2>Your stats.</h2><div class="stats-grid"><div><strong>${stats.undoUses}</strong><span>Undo uses</span></div><div><strong>${stats.restarts}</strong><span>Total level restarts</span></div><div><strong>${Object.keys(stats.flawless).length}</strong><span>Flawless levels</span></div><div><strong>${cleared} / ${TOTAL_LEVELS}</strong><span>Levels completed</span></div><div><strong>${stats.bestCombo}×</strong><span>Best combo · Lantern Orchard onward</span></div><div><strong>${stats.easyRestarts}</strong><span>Easy-level restarts</span></div><div><strong>${stats.failedHard}</strong><span>Failed hard attempts</span></div><div><strong>${stats.hardRestarts}</strong><span>Hard-level restarts</span></div></div><p>A flawless level is a climb completed without a wrong match, blocked-gate tap, undo, or restart. Each level counts once; a clean replay can earn its flawless mark.</p><p>Hints are welcome and do not count as mistakes. Easy restarts and hard failures are tracked separately from this update. Historical restarts remain in the total.</p><button class="secondary" id="reset-from-stats">Back to options</button><button class="primary" id="close">Back to the garden</button>`);
  $('reset-from-stats').onclick=showOptions;$('close').onclick=close;
 }
 function warnReset(){
@@ -290,15 +320,25 @@ function warnReset(){
  modal('<div class="big-icon">↻</div><div class="eyebrow">START A BRAND-NEW ADVENTURE?</div><h2>Restart the entire game?</h2><p>This will erase <strong>all completed levels, unlocked gardens, collected star records, tutorial acknowledgements, and statistics</strong> saved in this browser.</p><p><strong>This cannot be undone.</strong> You’ll return to level 1 in Clover Garden. Your music and effects preferences will stay.</p><button class="primary" id="cancel-reset" autofocus>Keep my progress</button><button class="danger" id="confirm-reset">Yes, erase progress and restart</button>');
  $('cancel-reset').onclick=close;$('confirm-reset').onclick=()=>{
   clearTimeout(animationTimer);clearTimeout(feedbackTimer);window.TileHopLessons?.cleanup();$('lesson-dialog').close();close();
-  records={};tutorialsSeen={};comboSeen=false;stats={undoUses:0,restarts:0,bestCombo:0,flawless:{},dirty:{}};load(0);$('announcement').textContent='Game restarted. Welcome back to Clover Garden.';
+  records={};tutorialsSeen={};comboSeen=false;assistSeen={};hardAttempts={};stats={undoUses:0,restarts:0,bestCombo:0,failedHard:0,easyRestarts:0,hardRestarts:0,flawless:{},dirty:{}};load(0);$('announcement').textContent='Game restarted. Welcome back to Clover Garden.';
  };
  $('cancel-reset').focus?.({preventScroll:true});
 }
-$('undo').onclick=()=>{if(path.length===1)return;stats.undoUses++;markError();clearTimeout(animationTimer);clearTimeout(feedbackTimer);path.pop();arrival=null;$('rabbit').classList.remove('celebrating');$('rabbit').innerHTML=bunny;render();tone(300,.08);};$('restart').onclick=warnRestart;
+$('undo').onclick=()=>{
+ if(path.length===1||attempt?.failed||arrival)return;
+ if(attempt&&attempt.undoLeft===0){showFailure('No undos remain. Restart for a new attempt.');return;}
+ if(attempt)attempt.undoLeft--;stats.undoUses++;markError();clearTimeout(animationTimer);clearTimeout(feedbackTimer);path.pop();arrival=null;if(attempt)attempt.hintFor=null;$('rabbit').classList.remove('celebrating');$('rabbit').innerHTML=bunny;render();persist();tone(300,.08);checkNoRecovery();
+};$('restart').onclick=warnRestart;
 $('options').onclick=showOptions;
-$('hint').onclick=()=>{const route=bestRoute(current());if(!route){$('prompt').textContent='Try undoing your last hop';$('announcement').textContent='This path cannot reach the top. Undo your last hop.';return;}const next=route.route[0];if(next){document.querySelector(`[data-id="${next.id}"]`).classList.add('hinted');$('prompt').textContent='This tile leads toward home';}};
+$('hint').onclick=()=>{
+ if(attempt?.failed||arrival)return;
+ const repeated=attempt?.hintFor===current().id;
+ if(attempt&&!repeated){if(attempt.hintLeft===0){showFailure('No hints remain. Restart for a new attempt.');return;}attempt.hintLeft--;attempt.hintFor=current().id;persist();render();}
+ const route=bestRoute(current());if(!route){$('prompt').textContent='Try undoing your last hop';$('announcement').textContent='This path cannot reach the top. Undo your last hop.';checkNoRecovery();return;}
+ const next=route.route[0];if(next){document.querySelector(`[data-id="${next.id}"]`).classList.add('hinted');$('prompt').textContent='This tile leads toward home';}
+};
 $('levels').onclick=()=>showLevels();
-$('help').onclick=()=>{modal('<div class="big-icon">☁</div><div class="eyebrow">WELCOME TO TILE HOP</div><h2>A hop, a match, a smile.</h2><p><strong>1.</strong> Look at the big symbol on your current tile.<br><strong>2.</strong> Tap the same symbol in the next reachable row.<br><strong>3.</strong> The small symbol previews your next match.</p><p>Reach the top to complete your climb. Stars are optional little discoveries. Wrong taps are harmless; undo is always free. No timer, no rush.</p><button class="primary" id="review-lesson">Show this garden’s example</button><button class="secondary" id="close">Let’s hop →</button>');$('review-lesson').onclick=()=>{close();showLesson();};$('close').onclick=close;};
+$('help').onclick=()=>{modal('<div class="big-icon">☁</div><div class="eyebrow">WELCOME TO TILE HOP</div><h2>A hop, a match, a smile.</h2><p><strong>1.</strong> Look at the big symbol on your current tile.<br><strong>2.</strong> Tap the same symbol in the next reachable row.<br><strong>3.</strong> The small symbol previews your next match.</p><p>Reach the top to complete your climb. Stars are optional little discoveries. Wrong taps reset your combo. The first five gardens have unlimited assists. Copper Grove has 3 undos / 2 hints; Crystal Labyrinth has 2 undos / 1 hint. Needing more ends a hard attempt. No timer, no rush.</p><button class="primary" id="review-lesson">Show this garden’s example</button><button class="secondary" id="close">Let’s hop →</button>');$('review-lesson').onclick=()=>{close();showLesson();};$('close').onclick=close;};
 if(!unlockedGarden(Math.floor(levelIndex/12)))levelIndex=firstUnfinished(0);
 load(levelIndex);
 window.addEventListener?.('resize',()=>render(false));

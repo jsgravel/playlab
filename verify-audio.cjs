@@ -27,7 +27,11 @@ const flush=async()=>{for(let i=0;i<8;i++)await Promise.resolve();};
  const signatures=new Set();
  for(const name of ['key','unlock','spend','locked','springReady','spring','sun','star','nearby','complete','garden','finale']){const start=notes.length;await context.window.TileHopAudio.cue(name);const signature=notes.slice(start).map(n=>n.frequency.value.toFixed(2)).join(',');assert.ok(signature);signatures.add(signature);}
  assert.equal(signatures.size,12,'Mechanics and celebrations have distinct sound cues');
- effects.onclick();const mutedCues=notes.length;await context.window.TileHopAudio.cue('key');await context.window.TileHopAudio.cue('spring');assert.equal(notes.length,mutedCues,'All mechanic cues respect effects mute');effects.onclick();await flush();
+ const comboSignatures=new Set();
+ for(const streak of [1,2,3,6,10]){const start=notes.length;await context.window.TileHopAudio.combo(streak);comboSignatures.add(notes.slice(start).map(n=>n.frequency.value.toFixed(2)).join(','));}
+ assert.equal(comboSignatures.size,5,'Rising notes and richer combo tiers sound distinct');
+ const resetStart=notes.length;await context.window.TileHopAudio.combo(1);assert.equal(notes[resetStart].frequency.value,261.6255653005986,'A broken streak restarts the gentle melody');
+ effects.onclick();const mutedCues=notes.length;await context.window.TileHopAudio.cue('key');await context.window.TileHopAudio.cue('spring');await context.window.TileHopAudio.combo(10);assert.equal(notes.length,mutedCues,'All mechanic cues respect effects mute');effects.onclick();await flush();
  document.getElementById('effects-volume').value='30';document.getElementById('effects-volume').oninput();assert.equal(audioContext.gains[1].gain.value,.3);assert.equal(JSON.parse(stored).effectsVolume,.3);
  document.getElementById('music-volume').value='20';document.getElementById('music-volume').oninput();assert.equal(audioContext.gains[0].gain.value,.2);assert.equal(audioContext.gains[1].gain.value,.3);
  document.getElementById('next-song').onclick();await flush();assert.equal(intervals.size,1,'Changing songs must not stack schedulers');assert.equal(JSON.parse(stored).track,1);

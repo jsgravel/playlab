@@ -76,3 +76,5 @@ html:has(dialog[open]),body:has(dialog[open]){overflow:hidden}
 @keyframes rabbit-dance{0%,100%{rotate:0deg;translate:0 0}25%{rotate:-9deg;translate:0 -9px}50%{rotate:0deg;translate:0 -3px}75%{rotate:9deg;translate:0 -9px}}
 .party-confetti{position:absolute;z-index:9;pointer-events:none;width:6px;height:9px;border-radius:2px;animation:party-burst 1.45s cubic-bezier(.2,.7,.3,1) both}
 @keyframes party-burst{0%{transform:translate(0,0) rotate(0);opacity:0}10%{opacity:1}45%{transform:translate(calc(var(--dx)*.65),var(--rise)) rotate(calc(var(--spin)*.5))}100%{transform:translate(var(--dx),var(--fall)) rotate(var(--spin));opacity:0}}
+
+.playfield .tile.gate-ready .mechanic.has-icon{background:#e0efd7;border-color:#78a369;color:#397642}.playfield .tile.gate-ready{border-color:#8ead78}.assist-status{font-size:9px;line-height:1.4;margin:0;padding:5px 12px;text-align:center;background:#eee8d7;color:#826849}.assist-status[hidden]{display:none}

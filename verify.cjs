@@ -166,3 +166,38 @@ console.log('PASS: smooth camera scheduling, rapid-hop retargeting, stable repai
  vm.runInContext('confettiBurst()',party.context);assert.equal(party.document.getElementById('playfield').children.filter(p=>p.className==='party-confetti').length,count,'Reduced motion suppresses the burst');
  console.log('PASS: inline finish, smiling rabbit, retained landing, Next action, restored hop controls, and reduced-motion celebration.');
 }
+
+{
+ const hard=boot({records:Object.fromEntries(Array.from({length:72},(_,i)=>[i,0])),tutorialsSeen:{5:true,6:true},assistSeen:{5:true,6:true},comboSeen:true});
+ hard.api.load(60,true);const state=()=>vm.runInContext('({...attempt})',hard.context);
+ assert.equal(state().undoLeft,3);assert.equal(state().hintLeft,2);
+ const route=hard.api.bestRoute(hard.api.getState().level.start).route;
+ hard.document.getElementById('hint').onclick();assert.equal(state().hintLeft,1);
+ hard.document.getElementById('hint').onclick();assert.equal(state().hintLeft,1,'Repeating a hint on the same tile is free');
+ hard.context.hop(route[0]);
+ const ready=hard.document.getElementById('board').children.find(b=>b.dataset.id&&b['aria-label']?.includes('ready to open'));
+ assert.ok(ready,'Sufficient inventory marks unopened gates ready');assert.match(ready.innerHTML,/M9 10V6/,'Ready gate has the open-lock SVG');
+ hard.document.getElementById('hint').onclick();assert.equal(state().hintLeft,0);assert.equal(state().failed,false,'Spending the last hint still lets you continue');
+ hard.context.hop(route[1]);hard.document.getElementById('hint').onclick();assert.equal(state().failed,true);assert.equal(hard.storage().stats.failedHard,1);
+ const before=hard.api.getState().path.length;hard.context.hop(route[2]);assert.equal(hard.api.getState().path.length,before,'Failed attempts cannot continue');
+ hard.document.getElementById('undo').onclick();assert.equal(hard.storage().stats.failedHard,1,'A failed attempt is counted once');
+ const restored=boot(hard.storage());assert.equal(restored.storage().stats.failedHard,1);assert.equal(vm.runInContext('attempt.failed',restored.context),true,'Failed state survives refresh');
+ restored.document.getElementById('retry-hard').onclick();assert.equal(vm.runInContext('attempt.hintLeft',restored.context),2);assert.equal(restored.storage().stats.hardRestarts,1);
+ const undoRoute=restored.api.bestRoute(restored.api.getState().level.start).route;
+ for(const tile of undoRoute.slice(0,3))restored.context.hop(tile);
+ for(let i=0;i<3;i++)restored.document.getElementById('undo').onclick();assert.equal(vm.runInContext('attempt.undoLeft',restored.context),0);
+ restored.api.load(0);restored.api.load(60);assert.equal(vm.runInContext('attempt.undoLeft',restored.context),0,'Switching levels does not refill assists');
+ const firstGood=restored.api.bestRoute(restored.api.getState().level.start).route[0];
+ let bad=vm.runInContext('choices(current())',restored.context).find(t=>t.id!==firstGood.id);restored.context.hop(bad);
+ for(let i=0;i<20&&!vm.runInContext('attempt.failed',restored.context);i++){
+  const choices=vm.runInContext('choices(current())',restored.context);if(!choices.length)break;restored.context.hop(choices[0]);
+ }
+ assert.equal(vm.runInContext('attempt.failed',restored.context),true,'A dead end without undos fails automatically');assert.equal(restored.storage().stats.failedHard,2);
+ restored.document.getElementById('retry-hard').onclick();const retryRoute=restored.api.bestRoute(restored.api.getState().level.start).route;restored.context.hop(retryRoute[0]);
+ const refresh=boot(restored.storage());assert.equal(refresh.api.getState().path.length,2,'Hard route position restores after refresh');
+ refresh.document.getElementById('restart').onclick();refresh.document.getElementById('cancel-restart').onclick();assert.equal(refresh.storage().stats.failedHard,2);
+ refresh.document.getElementById('restart').onclick();refresh.document.getElementById('confirm-restart').onclick();assert.equal(refresh.storage().stats.failedHard,3,'Abandoning an active hard attempt is a failure');
+ refresh.api.load(72,true);assert.equal(vm.runInContext('attempt.undoLeft',refresh.context),2);assert.equal(vm.runInContext('attempt.hintLeft',refresh.context),1);
+ refresh.api.load(0);refresh.document.getElementById('restart').onclick();refresh.document.getElementById('confirm-restart').onclick();assert.equal(refresh.storage().stats.failedHard,3);assert.equal(refresh.storage().stats.easyRestarts,1,'Easy restarts have their own counter');
+ console.log('PASS: ready gates, finite assists, repeat hints, dead-end failure, restart refills, route/budget restoration, and separate easy/hard stats.');
+}
