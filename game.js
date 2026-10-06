@@ -309,11 +309,35 @@ function warnRestart(){
  $('cancel-restart').onclick=close;$('confirm-restart').onclick=()=>{close();stats.restarts++;if(attempt){stats.hardRestarts++;if(!arrival&&(path.length>1||attempt.hintLeft<assistLimits().hint))recordHardFailure();}else stats.easyRestarts++;markError();load(levelIndex,true);};
  $('cancel-restart').focus?.({preventScroll:true});
 }
+function shareSummary(){
+ const cleared=Array.from({length:TOTAL_LEVELS},(_,i)=>completed(i)).filter(Boolean).length,gardens=GARDENS.filter((_,i)=>gardenComplete(i)).length;
+ const url='https://jsgravel.github.io/playlab/';
+ const text=[cleared===TOTAL_LEVELS?'🐇 I beat Tile Hop!':'🐇 My Tile Hop adventure',`Levels completed: ${cleared}/${TOTAL_LEVELS}`,`Gardens completed: ${gardens}/${GARDENS.length}`,`Flawless levels: ${Object.keys(stats.flawless).length}`,`Best combo: ${stats.bestCombo}×`,`Undo uses: ${stats.undoUses} · Restarts: ${stats.restarts}`,`Failed hard attempts: ${stats.failedHard}`,'Can you hop your way home?'].join('\n');
+ return {title:'My Tile Hop progress',text,url};
+}
+function bindStatsSharing(){
+ const data=shareSummary(),full=data.text+'\n\n'+data.url;
+ const share=$('share-stats'),copy=$('copy-stats'),status=$('share-status'),preview=$('share-preview'),field=$('share-text');
+ field.value=full;
+ let busy=false;
+ async function copyProgress(){
+  try{if(!window.navigator?.clipboard?.writeText)throw new Error('Clipboard unavailable');await window.navigator.clipboard.writeText(full);status.textContent='Progress copied! Paste it into a message to your friend.';}
+  catch(_){preview.open=true;field.focus?.();field.select?.();status.textContent='Select and copy this summary, then paste it into a message.';}
+ }
+ async function run(native){
+  if(busy)return;busy=true;share.disabled=true;copy.disabled=true;status.textContent='';
+  try{
+   if(native&&window.navigator?.share){try{await window.navigator.share(data);status.textContent='Progress shared!';return;}catch(error){if(error?.name==='AbortError'){status.textContent='Sharing cancelled.';return;}}}
+   await copyProgress();
+  }finally{busy=false;share.disabled=false;copy.disabled=false;}
+ }
+ share.onclick=()=>run(true);copy.onclick=()=>run(false);
+}
 function showStats(){
  finishPendingClimb();
  const cleared=Array.from({length:TOTAL_LEVELS},(_,i)=>completed(i)).filter(Boolean).length;
- modal(`<div class="eyebrow">YOUR LITTLE ADVENTURE</div><h2>Your stats.</h2><div class="stats-grid"><div><strong>${stats.undoUses}</strong><span>Undo uses</span></div><div><strong>${stats.restarts}</strong><span>Total level restarts</span></div><div><strong>${Object.keys(stats.flawless).length}</strong><span>Flawless levels</span></div><div><strong>${cleared} / ${TOTAL_LEVELS}</strong><span>Levels completed</span></div><div><strong>${stats.bestCombo}×</strong><span>Best combo · Lantern Orchard onward</span></div><div><strong>${stats.easyRestarts}</strong><span>Easy-level restarts</span></div><div><strong>${stats.failedHard}</strong><span>Failed hard attempts</span></div><div><strong>${stats.hardRestarts}</strong><span>Hard-level restarts</span></div></div><p>A flawless level is a climb completed without a wrong match, blocked-gate tap, undo, or restart. Each level counts once; a clean replay can earn its flawless mark.</p><p>Hints are welcome and do not count as mistakes. Easy restarts and hard failures are tracked separately from this update. Historical restarts remain in the total.</p><button class="secondary" id="reset-from-stats">Back to options</button><button class="primary" id="close">Back to the garden</button>`);
- $('reset-from-stats').onclick=showOptions;$('close').onclick=close;
+ modal(`<div class="eyebrow">YOUR LITTLE ADVENTURE</div><h2>Your stats.</h2><div class="stats-share"><button class="primary" id="share-stats">↗ Share progress</button><button class="secondary" id="copy-stats">Copy</button></div><p id="share-status" class="share-status" role="status"></p><details id="share-preview" class="share-preview"><summary>Preview shared summary</summary><textarea id="share-text" readonly aria-label="Progress summary to share"></textarea></details><div class="stats-grid"><div><strong>${stats.undoUses}</strong><span>Undo uses</span></div><div><strong>${stats.restarts}</strong><span>Total level restarts</span></div><div><strong>${Object.keys(stats.flawless).length}</strong><span>Flawless levels</span></div><div><strong>${cleared} / ${TOTAL_LEVELS}</strong><span>Levels completed</span></div><div><strong>${stats.bestCombo}×</strong><span>Best combo · Lantern Orchard onward</span></div><div><strong>${stats.easyRestarts}</strong><span>Easy-level restarts</span></div><div><strong>${stats.failedHard}</strong><span>Failed hard attempts</span></div><div><strong>${stats.hardRestarts}</strong><span>Hard-level restarts</span></div></div><p>A flawless level is a climb completed without a wrong match, blocked-gate tap, undo, or restart. Each level counts once; a clean replay can earn its flawless mark.</p><p>Hints are welcome and do not count as mistakes. Easy restarts and hard failures are tracked separately from this update. Historical restarts remain in the total.</p><button class="secondary" id="reset-from-stats">Back to options</button><button class="primary" id="close">Back to the garden</button>`);
+ bindStatsSharing();$('reset-from-stats').onclick=showOptions;$('close').onclick=close;
 }
 function warnReset(){
  finishPendingClimb();

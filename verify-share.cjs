@@ -1,0 +1,26 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const harness={require,console};vm.createContext(harness);
+vm.runInContext(fs.readFileSync('verify.cjs','utf8').split('const app=boot()')[0]+';this.boot=boot;',harness);
+const app=harness.boot({records:Object.fromEntries(Array.from({length:12},(_,i)=>[i,0])),stats:{bestCombo:8,undoUses:3,restarts:2,failedHard:1,flawless:{0:true}}});
+const get=id=>app.document.getElementById(id);
+app.context.showStats();
+let copied='',shares=0,payload;
+app.context.window.navigator={share:async data=>{shares++;payload=data;},clipboard:{writeText:async text=>{copied=text;}}};
+(async()=>{
+ const before=JSON.stringify(app.storage());
+ await get('share-stats').onclick();
+ assert.equal(shares,1);assert.equal(copied,'');assert.equal(payload.url,'https://jsgravel.github.io/playlab/');
+ assert.match(payload.text,/Levels completed: 12\/84/);assert.match(payload.text,/Gardens completed: 1\/7/);assert.match(payload.text,/Best combo: 8×/);
+ assert.equal(JSON.stringify(app.storage()),before,'Sharing never changes progress');
+ await get('copy-stats').onclick();assert.equal(copied,get('share-text').value);assert.match(copied,/https:\/\/jsgravel.github.io\/playlab\//);
+ copied='';app.context.window.navigator.share=async()=>{throw Object.assign(new Error('Cancelled'),{name:'AbortError'});};
+ await get('share-stats').onclick();assert.equal(copied,'','Cancellation does not trigger copying');assert.match(get('share-status').textContent,/cancelled/);
+ app.context.window.navigator.share=async()=>{throw new Error('Unsupported');};await get('share-stats').onclick();assert.ok(copied,'Failed native sharing falls back to copying');
+ copied='';delete app.context.window.navigator.share;await get('share-stats').onclick();assert.ok(copied,'Browsers without sharing copy the message');
+ let selected=false;get('share-text').select=()=>{selected=true;};app.context.window.navigator.clipboard.writeText=async()=>{throw new Error('Denied');};
+ await get('copy-stats').onclick();assert.equal(get('share-preview').open,true);assert.equal(selected,true,'Clipboard rejection opens a selectable message');
+ let resolve;shares=0;app.context.window.navigator.share=()=>{shares++;return new Promise(r=>{resolve=r;});};
+ const pending=get('share-stats').onclick();await get('share-stats').onclick();assert.equal(shares,1,'Rapid presses open only one share sheet');resolve();await pending;assert.equal(get('share-stats').disabled,false);
+ const completed=harness.boot({records:Object.fromEntries(Array.from({length:84},(_,i)=>[i,0]))});completed.context.showStats();assert.match(completed.document.getElementById('share-text').value,/I beat Tile Hop!/);assert.match(completed.document.getElementById('share-text').value,/Gardens completed: 7\/7/);
+ console.log('PASS: accurate share summaries, native sharing, cancellation, clipboard/manual fallback, rapid presses, and saved-progress preservation.');
+})().catch(error=>{console.error(error);process.exitCode=1;});
