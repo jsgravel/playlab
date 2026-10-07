@@ -5,7 +5,7 @@
   <meta name="theme-color" content="#183f36"><meta name="description" content="A gentle matching adventure. Follow the tiles, collect little stars, and hop home.">
   <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Tile Hop"><link rel="manifest" href="manifest.webmanifest">
   <title>Tile Hop · A little climb</title>
-  <link rel="stylesheet" href="style.css?v=20261005-share-stats"><script src="audio.js?v=20261005-share-stats" defer></script><script src="tutorials.js?v=20261005-share-stats" defer></script><script src="game.js?v=20261005-share-stats" defer></script><script src="fullscreen.js?v=20261005-share-stats" defer></script>
+  <link rel="stylesheet" href="style.css?v=20261007-garden-desktop"><script src="audio.js?v=20261007-garden-desktop" defer></script><script src="tutorials.js?v=20261007-garden-desktop" defer></script><script src="game.js?v=20261007-garden-desktop" defer></script><script src="fullscreen.js?v=20261007-garden-desktop" defer></script>
 </head>
 <body>
 <main class="app">
@@ -21,9 +21,11 @@
     <div id="combo-bar" class="combo-bar" hidden><strong id="combo-count">0×</strong><span id="combo-label">A fresh little streak</span><small>No timer · Just good choices</small></div>
     <div class="playfield" id="playfield"><div class="cloud cloud-one"></div><div class="cloud cloud-two"></div><div id="board" class="board"></div><div id="rabbit" class="rabbit" aria-hidden="true"></div><div class="ground"><span>✿</span><span>✿</span><span>✿</span></div></div>
     <div id="arrival-panel" class="arrival-panel" hidden aria-live="polite"></div>
+    <div class="play-hud">
     <div class="instruction" id="instruction"><div id="match" class="match-symbol"></div><div><strong id="prompt">Find a matching tile</strong><span id="subprompt">The little symbol shows your next match.</span></div><div id="keys" class="key-inventory" hidden></div><div class="star-count" aria-label="Stars collected">✦ <span id="stars">0</span></div></div>
     <p id="assist-status" class="assist-status" hidden></p>
     <div class="controls" id="hop-controls"><button id="undo">↶ <span>Undo</span></button><button id="restart">↻ <span>Restart</span></button><button id="hint">☀ <span>Hint</span></button></div>
+    </div>
   </section>
   <footer><span>No rush. Just a little adventure.</span><div class="footer-options"><button id="options">⚙ Options</button><button id="help">How to play ↗</button></div></footer>
 </main>

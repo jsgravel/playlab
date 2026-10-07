@@ -1,11 +1,12 @@
 'use strict';
 (() => {
  const button=document.getElementById('fullscreen'),status=document.getElementById('fullscreen-status'),root=document.documentElement;
- let focus=false,previousScroll=0;
+ let focus=false,previousScroll=0,lastActive;
  const nativeActive=()=>!!(document.fullscreenElement||document.webkitFullscreenElement);
  function update(){
   const active=nativeActive()||focus;
   document.body.classList.toggle('immersive',active);
+  if(active!==lastActive){lastActive=active;window.TileHop?.resize?.();}
   button.setAttribute('aria-pressed',String(active));button.setAttribute('aria-label',active?(focus?'Exit focus view':'Exit fullscreen'):'Enter fullscreen');
   button.innerHTML=active?'↙ <span>Exit</span>':'⛶ <span>Full screen</span>';
   if(!focus)status.textContent='';

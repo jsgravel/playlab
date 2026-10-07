@@ -26,7 +26,7 @@ function finish(index){
   context.hop(tile);assert.equal(api.getState().path.at(-1).id,tile.id,'Moves commit immediately without waiting for animation');keys+=(tile.key?1:0)-(tile.spend?tile.lock:0);assert.equal(vm.runInContext('keyCount()',context),keys);
  }
  assert.equal(api.getState().path.at(-1).r,state.level.rows-1);app.flush();assert.ok(Object.hasOwn(app.storage().records,index));
- const content=document.getElementById('arrival-panel').innerHTML;assert.ok(!document.getElementById('dialog').open,'Finishing keeps the board visible instead of opening a modal');assert.ok(!/\d+ of \d+ stars/.test(content));document.getElementById('dialog').close();return content;
+ const content=document.getElementById('arrival-panel').innerHTML;if(document.getElementById('dialog').open){assert.equal(document.getElementById('dialog').dataset.view,'garden-party','Only garden milestones get a popup');assert.match(document.getElementById('dialog-content').innerHTML,/party-rabbit/);}else assert.equal(document.getElementById('arrival-panel').hidden,false);assert.ok(!/\d+ of \d+ stars/.test(content));document.getElementById('dialog').close();return content;
 }
 finish(11);assert.equal(api.unlockedGarden(1),false,'Completing level 12 alone does not unlock garden 2');
 for(let i=0;i<11;i++){const content=finish(i);if(i===10){assert.ok(content.includes('Clover Garden complete!'));assert.ok(content.includes('Willow Walk'));}}
@@ -200,4 +200,14 @@ console.log('PASS: smooth camera scheduling, rapid-hop retargeting, stable repai
  refresh.api.load(72,true);assert.equal(vm.runInContext('attempt.undoLeft',refresh.context),2);assert.equal(vm.runInContext('attempt.hintLeft',refresh.context),1);
  refresh.api.load(0);refresh.document.getElementById('restart').onclick();refresh.document.getElementById('confirm-restart').onclick();assert.equal(refresh.storage().stats.failedHard,3);assert.equal(refresh.storage().stats.easyRestarts,1,'Easy restarts have their own counter');
  console.log('PASS: ready gates, finite assists, repeat hints, dead-end failure, restart refills, route/budget restoration, and separate easy/hard stats.');
+}
+
+{
+ const milestone=boot({records:Object.fromEntries(Array.from({length:11},(_,i)=>[i,0]))});clearLevel(milestone,11);
+ assert.equal(milestone.document.getElementById('dialog').dataset.view,'garden-party');assert.match(milestone.document.getElementById('dialog-content').innerHTML,/Willow Walk/);
+ milestone.document.getElementById('party-stay').onclick();assert.equal(milestone.document.getElementById('dialog').open,false);assert.equal(milestone.api.getState().path.at(-1).r,milestone.api.getState().level.rows-1);
+ vm.runInContext('showGardenParty(0)',milestone.context);milestone.document.getElementById('party-next').onclick();assert.equal(milestone.api.getState().levelIndex,12,'Milestone button enters the new garden');
+ const screen=boot();screen.context.window.innerWidth=1440;screen.context.window.innerHeight=900;screen.context.document.body={classList:{contains:()=>true}};
+ screen.api.load(24);assert.ok(parseFloat(screen.document.getElementById('playfield').style.height)>460,'Desktop fullscreen removes the old 460px play-area cap');assert.ok(vm.runInContext('rowSpacing()',screen.context)>80);
+ console.log('PASS: special garden celebration, keep-view/next-garden actions, and uncapped desktop fullscreen with larger row spacing.');
 }
